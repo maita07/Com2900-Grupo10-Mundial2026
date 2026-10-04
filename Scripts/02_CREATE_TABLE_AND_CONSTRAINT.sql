@@ -62,7 +62,7 @@ CREATE TABLE geografia.HISTORIAL_TIPO_CAMBIO (
     CONSTRAINT CHK_TIPO_CAMBIO_VALOR CHECK (valor_cotizacion > 0)
 );
 
--- CCONFEDERACION
+-- CONFEDERACION
 CREATE TABLE geografia.CONFEDERACION (
     id_confederacion INT NOT NULL,
     nombre_confederacion VARCHAR(50) NOT NULL,
@@ -262,7 +262,9 @@ CREATE TABLE torneo.JUGADOR_ALINEACION (
     es_titular BIT NOT NULL,
     posicion_campo VARCHAR(30) NOT NULL,
     minuto_ingreso INT CONSTRAINT DF_JUG_ALIN_INGRESO DEFAULT 0 NOT NULL,
+    minuto_ingreso_extra INT NULL,
     minuto_salida INT NULL,
+    minuto_salida_extra INT NULL,
     CONSTRAINT PK_JUGADOR_ALINEACION PRIMARY KEY (id_fase, nro_partido_fase, id_seleccion, dorsal_oficial),
     CONSTRAINT FK_JUG_ALIN_ALINEACION FOREIGN KEY (id_fase, nro_partido_fase, id_seleccion) REFERENCES torneo.ALINEACION_PARTIDO (id_fase, nro_partido_fase, id_seleccion),
     CONSTRAINT FK_JUG_ALIN_CONVOCATORIA FOREIGN KEY (id_seleccion, dorsal_oficial) REFERENCES torneo.CONVOCATORIA (id_seleccion, dorsal_oficial),
@@ -278,7 +280,7 @@ CREATE TABLE torneo.SUSTITUCION (
     dorsal_sale INT NOT NULL,
     dorsal_entra INT NOT NULL,
     minuto_cambio INT NOT NULL,
-    minuto_cambio_extra INT,
+    minuto_cambio_extra INT NULL,
     ventana_numero INT NOT NULL,
     CONSTRAINT PK_SUSTITUCION PRIMARY KEY (id_fase, nro_partido_fase, id_secuencia),
     CONSTRAINT FK_SUSTITUCION_PARTIDO FOREIGN KEY (id_fase, nro_partido_fase) REFERENCES torneo.PARTIDO (id_fase, nro_partido_fase),
@@ -294,7 +296,7 @@ CREATE TABLE torneo.GOL (
     nro_partido_fase INT NOT NULL,
     id_gol INT NOT NULL,
     minuto_gol INT NOT NULL,
-    minuto_gol_extra INT,
+    minuto_gol_extra INT NULL,
     tipo_gol VARCHAR(20) NOT NULL,
     id_seleccion INT NOT NULL,
     dorsal_autor INT NOT NULL,
@@ -313,7 +315,7 @@ CREATE TABLE torneo.SANCION_TARJETA (
     nro_partido_fase INT NOT NULL,
     id_tarjeta INT NOT NULL,
     minuto_sancion INT NOT NULL,
-    minuto_sancion_extra INT,
+    minuto_sancion_extra INT NULL,
     tipo_tarjeta VARCHAR(20) NOT NULL,
     motivo VARCHAR(100) NOT NULL,
     id_seleccion INT NOT NULL,
