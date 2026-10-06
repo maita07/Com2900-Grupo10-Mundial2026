@@ -304,6 +304,8 @@ CREATE TABLE torneo.GOL (
     CONSTRAINT PK_GOL PRIMARY KEY (id_fase, nro_partido_fase, id_gol),
     CONSTRAINT FK_GOL_PARTIDO FOREIGN KEY (id_fase, nro_partido_fase) REFERENCES torneo.PARTIDO (id_fase, nro_partido_fase),
     CONSTRAINT FK_GOL_AUTOR FOREIGN KEY (id_seleccion, dorsal_autor) REFERENCES torneo.CONVOCATORIA (id_seleccion, dorsal_oficial),
+    CONSTRAINT FK_GOL_ASISTENTE FOREIGN KEY (id_seleccion, dorsal_asistente) 
+    REFERENCES torneo.CONVOCATORIA (id_seleccion, dorsal_oficial),
     CONSTRAINT CHK_GOL_MINUTO CHECK (minuto_gol BETWEEN 1 AND 120),
     CONSTRAINT CHK_GOL_MINUTO_EXTRA CHECK (minuto_gol_extra > 0),
     CONSTRAINT CHK_GOL_TIPO CHECK (tipo_gol IN ('JUGADA', 'CABEZA', 'PENAL', 'TIRO_LIBRE', 'AUTOGOL'))
