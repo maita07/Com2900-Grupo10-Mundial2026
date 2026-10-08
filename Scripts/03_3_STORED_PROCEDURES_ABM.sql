@@ -57,14 +57,17 @@ BEGIN
     IF @Nombre_Seleccion IS NULL OR LEN(@Nombre_Seleccion) <= 0
       SET @ErroresAcumulados += '- El nombre de la selección es obligatorio y no puede estar vacío.' + CHAR(13);
 
-    IF EXISTS (SELECT 1 FROM torneo.CONVOCATORIA WHERE id_seleccion = @Id_Seleccion)
-      SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene convocatorias asociadas.' + CHAR(13);
+    IF @Accion = 'B'
+    BEGIN
+      IF EXISTS (SELECT 1 FROM torneo.CONVOCATORIA WHERE id_seleccion = @Id_Seleccion)
+        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene convocatorias asociadas.' + CHAR(13);
 
-    IF EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_seleccion_local = @Id_Seleccion OR id_seleccion_visitante = @Id_Seleccion)
-      SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene partidos asociados.' + CHAR(13);
+      IF EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_seleccion_local = @Id_Seleccion OR id_seleccion_visitante = @Id_Seleccion)
+        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene partidos asociados.' + CHAR(13);
 
-    IF EXISTS (SELECT 1 FROM persona.CUERPO_TECNICO WHERE id_seleccion = @Id_Seleccion)
-      SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene cuerpo técnico asociado.' + CHAR(13);
+      IF EXISTS (SELECT 1 FROM persona.CUERPO_TECNICO WHERE id_seleccion = @Id_Seleccion)
+        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene cuerpo técnico asociado.' + CHAR(13);
+    END;
 
     IF LEN(@ErroresAcumulados)> 0
     BEGIN
