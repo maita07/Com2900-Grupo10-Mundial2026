@@ -195,6 +195,7 @@ BEGIN TRY
         DECLARE @MensajeSQL NVARCHAR(4000) = ERROR_MESSAGE();
         THROW 50001, @MensajeSQL, 1;
     END CATCH;
+END;
 GO
 
 --2 Módulo Personas y Jugadores: persona.sp_CUERPO_TECNICO_ABM
