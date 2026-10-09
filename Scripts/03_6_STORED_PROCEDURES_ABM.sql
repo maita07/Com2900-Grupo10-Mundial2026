@@ -13,19 +13,11 @@ Integrantes:
 - Castillo Gabriela Florencia: ItsFlorencia
 - Maita Pitado Jose Gregorio: maita07
 
-Descripcion: Script T-SQL de creación e implementación de los Stored Procedures 
-             de ABM para el Módulo 6: Disciplinario y Control.
+Descripcion: Script T-SQL de creación de Stored Procedures de ABM 
+             para el Módulo 6: Disciplinario y Control.
              Procedimientos incluidos:
              - torneo.sp_SANCION_TARJETA_ABM
              - torneo.sp_CONTROL_SUSPENSION_ABM
-
-Características técnicas:
-- Encapsulamiento total de operaciones DML (INSERT, UPDATE, DELETE).
-- Validaciones segregadas según operación (@Accion IN ('A', 'M', 'B')).
-- Manejo de PK compuesta y validación de existencia en modificaciones y bajas.
-- Acumulación de errores de validación con mensaje consolidado (THROW 50000).
-- Integridad transaccional con TRY...CATCH y control de @@TRANCOUNT (THROW 50001).
-- T-SQL puro, sin CLR ni SQL dinámico.
 ---------------------------------------------------------
 */
 
@@ -56,7 +48,7 @@ BEGIN
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
         SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
 
-    -- 2. Validación de PK Compuesta en todas las acciones
+    -- 2. Validación de PK Compuesta en todas las operaciones
     IF @id_fase IS NULL
         SET @ErroresAcumulados += N'- El id_fase es obligatorio.' + CHAR(13);
 
@@ -66,10 +58,19 @@ BEGIN
     IF @id_tarjeta IS NULL
         SET @ErroresAcumulados += N'- El id_tarjeta es obligatorio.' + CHAR(13);
 
-    -- 3. Existencia de PK para Modificación y Baja
-    IF @Accion IN ('M', 'B') AND @id_fase IS NOT NULL AND @nro_partido_fase IS NOT NULL AND @id_tarjeta IS NOT NULL
+    -- 3. Existencia / Duplicidad de PK
+    IF @id_fase IS NOT NULL AND @nro_partido_fase IS NOT NULL AND @id_tarjeta IS NOT NULL
     BEGIN
-        IF NOT EXISTS (
+        IF @Accion = 'A' AND EXISTS (
+            SELECT 1 
+            FROM torneo.SANCION_TARJETA 
+            WHERE id_fase = @id_fase 
+              AND nro_partido_fase = @nro_partido_fase 
+              AND id_tarjeta = @id_tarjeta
+        )
+            SET @ErroresAcumulados += N'- La sanción con tarjeta ya existe en la base de datos (PK duplicada).' + CHAR(13);
+
+        IF @Accion IN ('M', 'B') AND NOT EXISTS (
             SELECT 1 
             FROM torneo.SANCION_TARJETA 
             WHERE id_fase = @id_fase 
@@ -79,7 +80,7 @@ BEGIN
             SET @ErroresAcumulados += N'- La sanción con tarjeta indicada no existe en la base de datos.' + CHAR(13);
     END;
 
-    -- 4. Validaciones de dominio e integridad para Alta y Modificación
+    -- 4. Validaciones de integridad y dominio para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
         -- Partido en PARTIDO
@@ -118,7 +119,7 @@ BEGIN
             SET @ErroresAcumulados += N'- El motivo de la sanción es obligatorio y no puede quedar vacío.' + CHAR(13);
     END;
 
-    -- Emisión de errores acumulados
+    -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
         SET @ErroresAcumulados = N'Se encontraron los siguientes errores en torneo.sp_SANCION_TARJETA_ABM:' 
@@ -194,14 +195,14 @@ BEGIN
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
         SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
 
-    -- 2. Validación de PK Compuesta en todas las acciones
+    -- 2. Validación de PK Compuesta
     IF @id_seleccion IS NULL OR TRIM(@id_seleccion) = ''
         SET @ErroresAcumulados += N'- El id_seleccion es obligatorio.' + CHAR(13);
 
     IF @dorsal_oficial IS NULL
         SET @ErroresAcumulados += N'- El dorsal_oficial es obligatorio.' + CHAR(13);
 
-    -- 3. Convocado existente en torneo.CONVOCATORIA
+    -- 3. Existencia de Convocado
     IF @id_seleccion IS NOT NULL AND @dorsal_oficial IS NOT NULL
     BEGIN
         IF NOT EXISTS (
@@ -213,10 +214,18 @@ BEGIN
             SET @ErroresAcumulados += N'- El jugador convocado no existe en la nómina de CONVOCATORIA.' + CHAR(13);
     END;
 
-    -- 4. Existencia de PK para Modificación y Baja
-    IF @Accion IN ('M', 'B') AND @id_seleccion IS NOT NULL AND @dorsal_oficial IS NOT NULL
+    -- 4. Existencia / Duplicidad de PK
+    IF @id_seleccion IS NOT NULL AND @dorsal_oficial IS NOT NULL
     BEGIN
-        IF NOT EXISTS (
+        IF @Accion = 'A' AND EXISTS (
+            SELECT 1 
+            FROM torneo.CONTROL_SUSPENSION 
+            WHERE id_seleccion = UPPER(TRIM(@id_seleccion)) 
+              AND dorsal_oficial = @dorsal_oficial
+        )
+            SET @ErroresAcumulados += N'- El registro de control de suspensión ya existe (PK duplicada).' + CHAR(13);
+
+        IF @Accion IN ('M', 'B') AND NOT EXISTS (
             SELECT 1 
             FROM torneo.CONTROL_SUSPENSION 
             WHERE id_seleccion = UPPER(TRIM(@id_seleccion)) 
@@ -228,20 +237,17 @@ BEGIN
     -- 5. Validaciones de dominio para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
-        -- amarillas_acumuladas >= 0
         IF @amarillas_acumuladas IS NULL OR @amarillas_acumuladas < 0
             SET @ErroresAcumulados += N'- Las amarillas_acumuladas deben ser mayores o iguales a 0.' + CHAR(13);
 
-        -- partidos_suspension >= 0
         IF @partidos_suspension IS NULL OR @partidos_suspension < 0
             SET @ErroresAcumulados += N'- Los partidos_suspension deben ser mayores o iguales a 0.' + CHAR(13);
 
-        -- cumplida BIT (0 o 1)
         IF @cumplida IS NULL
             SET @ErroresAcumulados += N'- El campo cumplida es obligatorio y debe ser 0 o 1.' + CHAR(13);
     END;
 
-    -- Emisión de errores acumulados
+    -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
         SET @ErroresAcumulados = N'Se encontraron los siguientes errores en torneo.sp_CONTROL_SUSPENSION_ABM:' 
