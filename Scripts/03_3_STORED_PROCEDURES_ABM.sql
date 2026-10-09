@@ -51,7 +51,7 @@ BEGIN
     IF @Id_Pais NOT IN (SELECT id_pais FROM geografia.PAIS)
       SET @ErroresAcumulados += '- El país indicado no existe.' + CHAR(13);
 
-    IF @Grupo NOT IN (BETWEEN 'A' AND 'L')
+    IF @Grupo NOT BETWEEN 'A' AND 'L'
       SET @ErroresAcumulados += '- El grupo indicado no es válido (A-L).' + CHAR(13);
 
     IF @Nombre_Seleccion IS NULL OR LEN(@Nombre_Seleccion) <= 0
@@ -70,7 +70,7 @@ BEGIN
     END;
 
     IF LEN(@ErroresAcumulados)> 0
-    BEGIN
+    BEGIN;
       THROW 50000, @ErroresAcumulados, 1;
       RETURN;
     END;
@@ -81,7 +81,7 @@ BEGIN
       --ALTA
       IF @Accion = 'A'
       BEGIN
-        INSERT INTO torneo.SELECCION (id_seleccion, id_confederacion, id_pais, nombre_seleccion, grupo)
+        INSERT INTO torneo.SELECCION (id_seleccion, id_confederacion, id_pais, nombre_seleccion, grupo_asignado)
         VALUES (@Id_Seleccion, @Id_Confederacion, @Id_Pais, @Nombre_Seleccion, @Grupo);
       END;
 
@@ -92,7 +92,7 @@ BEGIN
         SET id_confederacion = @Id_Confederacion,
             id_pais = @Id_Pais,
             nombre_seleccion = @Nombre_Seleccion,
-            grupo = @Grupo
+            grupo_asignado = @Grupo
         WHERE id_seleccion = @Id_Seleccion;
       END;
 
@@ -111,7 +111,7 @@ BEGIN
         ROLLBACK TRANSACTION;
       
       DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-      THROW 50000, 'Error en el procedimiento sp_SELECCION_ABM: ' + @ErrorMessage, 1;
+      THROW 50000,@ErrorMessage, 1;
     END CATCH;
 END;
 GO
