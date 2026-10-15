@@ -789,7 +789,7 @@ SET NOCOUNT ON;
         IF @posicion_campo IS NULL OR TRIM(@posicion_campo) = ''
             SET @ErroresAcumulados += '- La posición de campo es obligatoria.' + CHAR(13);
  
-        IF @minuto_ingreso IS NOT NULL OR @minuto_ingreso < 0
+        IF @minuto_ingreso IS NOT NULL AND @minuto_ingreso < 0
             SET @ErroresAcumulados += '- El minuto de ingreso debe ser mayor o igual a 0.' + CHAR(13);
  
         IF @minuto_ingreso_extra IS NOT NULL AND @minuto_ingreso_extra <= 0
