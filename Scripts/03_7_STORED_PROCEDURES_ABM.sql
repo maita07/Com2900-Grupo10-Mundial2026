@@ -4,7 +4,7 @@ UNLaM - Universidad Nacional de La Matanza
 Departamento de Ingeniería e Investigaciones Tecnológicas
 Materia: Base de Datos Aplicada (Comisión 5600)
 Entrega 5 - Base de Datos T-SQL
-2026 - 2C
+Fecha: 15/10/2026 - 2C
 Grupo 10
 
 Integrantes:
@@ -35,62 +35,63 @@ CREATE OR ALTER PROCEDURE comercial.sp_ANUNCIANTE_ABM
     @Accion           CHAR(1),
     @id_anunciante    INT          = NULL,
     @id_pais_origen   CHAR(3)      = NULL,
-    @razon_social     VARCHAR(120) = NULL,
-    @marca_comercial  VARCHAR(80)  = NULL,
+    @razon_social     VARCHAR(100) = NULL,
+    @marca_comercial  VARCHAR(50)  = NULL,
     @rubro            VARCHAR(50)  = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @ErroresAcumulados NVARCHAR(MAX) = N'';
+    DECLARE @SaltoLinea NVARCHAR(2) = CHAR(13) + CHAR(10);
 
     -- 1. Validación de Acción
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
-        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
+        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + @SaltoLinea;
 
     -- 2. Validación de Clave Primaria
     IF @id_anunciante IS NULL
-        SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + CHAR(13);
+        SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + @SaltoLinea;
 
     -- 3. Existencia / Duplicidad de PK
     IF @id_anunciante IS NOT NULL
     BEGIN
         IF @Accion = 'A' AND EXISTS (SELECT 1 FROM comercial.ANUNCIANTE WHERE id_anunciante = @id_anunciante)
-            SET @ErroresAcumulados += N'- El anunciante ya existe en la base de datos (PK duplicada).' + CHAR(13);
+            SET @ErroresAcumulados += N'- El anunciante ya existe en la base de datos (PK duplicada).' + @SaltoLinea;
 
         IF @Accion IN ('M', 'B') AND NOT EXISTS (SELECT 1 FROM comercial.ANUNCIANTE WHERE id_anunciante = @id_anunciante)
-            SET @ErroresAcumulados += N'- El anunciante indicado no existe en la base de datos.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El anunciante indicado no existe en la base de datos.' + @SaltoLinea;
     END;
 
     -- 4. Validaciones de dominio e integridad para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
         IF @id_pais_origen IS NULL OR TRIM(@id_pais_origen) = ''
-            SET @ErroresAcumulados += N'- El id_pais_origen es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_pais_origen es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM geografia.PAIS WHERE id_pais = UPPER(TRIM(@id_pais_origen)))
-            SET @ErroresAcumulados += N'- El id_pais_origen especificado no existe en la tabla PAIS.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_pais_origen especificado no existe en la tabla PAIS.' + @SaltoLinea;
 
-        IF @razon_social IS NULL OR TRIM(@razon_social) = N''
-            SET @ErroresAcumulados += N'- La razon_social es obligatoria y no puede quedar vacía.' + CHAR(13);
+        IF @razon_social IS NULL OR TRIM(@razon_social) = ''
+            SET @ErroresAcumulados += N'- La razon_social es obligatoria y no puede quedar vacía.' + @SaltoLinea;
 
-        IF @marca_comercial IS NULL OR TRIM(@marca_comercial) = N''
-            SET @ErroresAcumulados += N'- La marca_comercial es obligatoria y no puede quedar vacía.' + CHAR(13);
+        IF @marca_comercial IS NULL OR TRIM(@marca_comercial) = ''
+            SET @ErroresAcumulados += N'- La marca_comercial es obligatoria y no puede quedar vacía.' + @SaltoLinea;
 
-        IF @rubro IS NULL OR TRIM(@rubro) = N''
-            SET @ErroresAcumulados += N'- El rubro es obligatorio y no puede quedar vacío.' + CHAR(13);
+        IF @rubro IS NULL OR TRIM(@rubro) = ''
+            SET @ErroresAcumulados += N'- El rubro es obligatorio y no puede quedar vacío.' + @SaltoLinea;
     END;
 
     -- 5. Restricción de Baja ('B'): No eliminar si posee campañas
     IF @Accion = 'B' AND @id_anunciante IS NOT NULL
     BEGIN
         IF EXISTS (SELECT 1 FROM comercial.CAMPANIA_PUBLICITARIA WHERE id_anunciante = @id_anunciante)
-            SET @ErroresAcumulados += N'- No se puede eliminar el anunciante porque posee campañas publicitarias registradas.' + CHAR(13);
+            SET @ErroresAcumulados += N'- No se puede eliminar el anunciante porque posee campañas publicitarias registradas.' + @SaltoLinea;
     END;
 
     -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
-        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_ANUNCIANTE_ABM:' 
-                                 + CHAR(13) + @ErroresAcumulados;
+        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_ANUNCIANTE_ABM (Acción: ' + ISNULL(@Accion, 'NULL') + N'):' 
+                                 + @SaltoLinea + @ErroresAcumulados;
         THROW 50000, @ErroresAcumulados, 1;
         RETURN;
     END;
@@ -147,60 +148,61 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @ErroresAcumulados NVARCHAR(MAX) = N'';
+    DECLARE @SaltoLinea NVARCHAR(2) = CHAR(13) + CHAR(10);
 
     -- 1. Validación de Acción
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
-        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
+        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + @SaltoLinea;
 
     -- 2. Validación de Clave Primaria
     IF @id_campania IS NULL
-        SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + CHAR(13);
+        SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + @SaltoLinea;
 
     -- 3. Existencia / Duplicidad de PK
     IF @id_campania IS NOT NULL
     BEGIN
         IF @Accion = 'A' AND EXISTS (SELECT 1 FROM comercial.CAMPANIA_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- La campaña publicitaria ya existe en la base de datos (PK duplicada).' + CHAR(13);
+            SET @ErroresAcumulados += N'- La campaña publicitaria ya existe en la base de datos (PK duplicada).' + @SaltoLinea;
 
         IF @Accion IN ('M', 'B') AND NOT EXISTS (SELECT 1 FROM comercial.CAMPANIA_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- La campaña publicitaria indicada no existe en la base de datos.' + CHAR(13);
+            SET @ErroresAcumulados += N'- La campaña publicitaria indicada no existe en la base de datos.' + @SaltoLinea;
     END;
 
     -- 4. Validaciones de dominio e integridad para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
         IF @id_anunciante IS NULL
-            SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM comercial.ANUNCIANTE WHERE id_anunciante = @id_anunciante)
-            SET @ErroresAcumulados += N'- El id_anunciante especificado no existe en la tabla ANUNCIANTE.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_anunciante especificado no existe en la tabla ANUNCIANTE.' + @SaltoLinea;
 
-        IF @nombre_campania IS NULL OR TRIM(@nombre_campania) = N''
-            SET @ErroresAcumulados += N'- El nombre_campania es obligatorio y no puede quedar vacío.' + CHAR(13);
+        IF @nombre_campania IS NULL OR TRIM(@nombre_campania) = ''
+            SET @ErroresAcumulados += N'- El nombre_campania es obligatorio y no puede quedar vacío.' + @SaltoLinea;
 
         IF @presupuesto_max_usd IS NULL OR @presupuesto_max_usd <= 0
-            SET @ErroresAcumulados += N'- El presupuesto_max_usd debe ser estrictamente mayor a 0.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El presupuesto_max_usd debe ser estrictamente mayor a 0.' + @SaltoLinea;
 
         IF @fecha_inicio IS NULL OR @fecha_fin IS NULL
-            SET @ErroresAcumulados += N'- Las fechas de inicio y fin son obligatorias.' + CHAR(13);
+            SET @ErroresAcumulados += N'- Las fechas de inicio y fin son obligatorias.' + @SaltoLinea;
         ELSE IF @fecha_fin < @fecha_inicio
-            SET @ErroresAcumulados += N'- La fecha_fin debe ser mayor o igual a la fecha_inicio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- La fecha_fin debe ser mayor o igual a la fecha_inicio.' + @SaltoLinea;
     END;
 
     -- 5. Restricción de Baja ('B'): Sin piezas ni exhibiciones vinculadas
     IF @Accion = 'B' AND @id_campania IS NOT NULL
     BEGIN
         IF EXISTS (SELECT 1 FROM comercial.PIEZA_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- No se puede eliminar la campaña porque posee piezas publicitarias vinculadas.' + CHAR(13);
+            SET @ErroresAcumulados += N'- No se puede eliminar la campaña porque posee piezas publicitarias vinculadas.' + @SaltoLinea;
 
         IF EXISTS (SELECT 1 FROM comercial.EXHIBICION_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- No se puede eliminar la campaña porque posee exhibiciones registradas.' + CHAR(13);
+            SET @ErroresAcumulados += N'- No se puede eliminar la campaña porque posee exhibiciones registradas.' + @SaltoLinea;
     END;
 
     -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
-        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_CAMPANIA_PUBLICITARIA_ABM:' 
-                                 + CHAR(13) + @ErroresAcumulados;
+        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_CAMPANIA_PUBLICITARIA_ABM (Acción: ' + ISNULL(@Accion, 'NULL') + N'):' 
+                                 + @SaltoLinea + @ErroresAcumulados;
         THROW 50000, @ErroresAcumulados, 1;
         RETURN;
     END;
@@ -254,62 +256,67 @@ CREATE OR ALTER PROCEDURE comercial.sp_PIEZA_PUBLICITARIA_ABM
     @Accion            CHAR(1),
     @id_pieza          INT          = NULL,
     @id_campania       INT          = NULL,
+    @url_contenido     VARCHAR(255) = NULL,
     @duracion_segundos INT          = NULL,
-    @url_contenido     VARCHAR(200) = NULL,
-    @idioma            VARCHAR(20)  = NULL
+    @idioma            VARCHAR(20)  = NULL,
+    @descripcion_pieza VARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @ErroresAcumulados NVARCHAR(MAX) = N'';
+    DECLARE @SaltoLinea NVARCHAR(2) = CHAR(13) + CHAR(10);
 
     -- 1. Validación de Acción
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
-        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
+        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + @SaltoLinea;
 
     -- 2. Validación de Clave Primaria
     IF @id_pieza IS NULL
-        SET @ErroresAcumulados += N'- El id_pieza es obligatorio.' + CHAR(13);
+        SET @ErroresAcumulados += N'- El id_pieza es obligatorio.' + @SaltoLinea;
 
     -- 3. Existencia / Duplicidad de PK
     IF @id_pieza IS NOT NULL
     BEGIN
         IF @Accion = 'A' AND EXISTS (SELECT 1 FROM comercial.PIEZA_PUBLICITARIA WHERE id_pieza = @id_pieza)
-            SET @ErroresAcumulados += N'- La pieza publicitaria ya existe en la base de datos (PK duplicada).' + CHAR(13);
+            SET @ErroresAcumulados += N'- La pieza publicitaria ya existe en la base de datos (PK duplicada).' + @SaltoLinea;
 
         IF @Accion IN ('M', 'B') AND NOT EXISTS (SELECT 1 FROM comercial.PIEZA_PUBLICITARIA WHERE id_pieza = @id_pieza)
-            SET @ErroresAcumulados += N'- La pieza publicitaria indicada no existe en la base de datos.' + CHAR(13);
+            SET @ErroresAcumulados += N'- La pieza publicitaria indicada no existe en la base de datos.' + @SaltoLinea;
     END;
 
     -- 4. Validaciones de dominio e integridad para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
         IF @id_campania IS NULL
-            SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM comercial.CAMPANIA_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- El id_campania especificado no existe en la tabla CAMPANIA_PUBLICITARIA.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_campania especificado no existe en la tabla CAMPANIA_PUBLICITARIA.' + @SaltoLinea;
 
         IF @duracion_segundos IS NULL OR @duracion_segundos <= 0
-            SET @ErroresAcumulados += N'- La duración en segundos debe ser mayor a 0.' + CHAR(13);
+            SET @ErroresAcumulados += N'- La duración en segundos debe ser mayor a 0.' + @SaltoLinea;
 
-        IF @url_contenido IS NULL OR TRIM(@url_contenido) = N''
-            SET @ErroresAcumulados += N'- La url del contenido es obligatoria y no puede quedar vacía.' + CHAR(13);
+        IF @url_contenido IS NULL OR TRIM(@url_contenido) = ''
+            SET @ErroresAcumulados += N'- La url del contenido es obligatoria y no puede quedar vacía.' + @SaltoLinea;
 
-        IF @idioma IS NULL OR TRIM(@idioma) = N''
-            SET @ErroresAcumulados += N'- El idioma es obligatorio y no puede quedar vacío.' + CHAR(13);
+        IF @idioma IS NULL OR TRIM(@idioma) = ''
+            SET @ErroresAcumulados += N'- El idioma es obligatorio y no puede quedar vacío.' + @SaltoLinea;
+
+        IF @descripcion_pieza IS NULL OR TRIM(@descripcion_pieza) = ''
+            SET @ErroresAcumulados += N'- La descripcion_pieza es obligatoria y no puede quedar vacía.' + @SaltoLinea;
     END;
 
     -- 5. Restricción de Baja ('B'): No eliminar si posee exhibiciones
     IF @Accion = 'B' AND @id_pieza IS NOT NULL
     BEGIN
         IF EXISTS (SELECT 1 FROM comercial.EXHIBICION_PUBLICITARIA WHERE id_pieza = @id_pieza)
-            SET @ErroresAcumulados += N'- No se puede eliminar la pieza publicitaria porque posee exhibiciones registradas.' + CHAR(13);
+            SET @ErroresAcumulados += N'- No se puede eliminar la pieza publicitaria porque posee exhibiciones registradas.' + @SaltoLinea;
     END;
 
     -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
-        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_PIEZA_PUBLICITARIA_ABM:' 
-                                 + CHAR(13) + @ErroresAcumulados;
+        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_PIEZA_PUBLICITARIA_ABM (Acción: ' + ISNULL(@Accion, 'NULL') + N'):' 
+                                 + @SaltoLinea + @ErroresAcumulados;
         THROW 50000, @ErroresAcumulados, 1;
         RETURN;
     END;
@@ -319,16 +326,21 @@ BEGIN
 
         IF @Accion = 'A'
         BEGIN
-            INSERT INTO comercial.PIEZA_PUBLICITARIA (id_pieza, id_campania, duracion_segundos, url_contenido, idioma)
-            VALUES (@id_pieza, @id_campania, @duracion_segundos, UPPER(TRIM(@url_contenido)), UPPER(TRIM(@idioma)));
+            INSERT INTO comercial.PIEZA_PUBLICITARIA (
+                id_pieza, id_campania, url_contenido, duracion_segundos, idioma, descripcion_pieza
+            )
+            VALUES (
+                @id_pieza, @id_campania, TRIM(@url_contenido), @duracion_segundos, UPPER(TRIM(@idioma)), TRIM(@descripcion_pieza)
+            );
         END
         ELSE IF @Accion = 'M'
         BEGIN
             UPDATE comercial.PIEZA_PUBLICITARIA
             SET id_campania       = @id_campania,
+                url_contenido     = TRIM(@url_contenido),
                 duracion_segundos = @duracion_segundos,
-                url_contenido     = UPPER(TRIM(@url_contenido)),
-                idioma            = UPPER(TRIM(@idioma))
+                idioma            = UPPER(TRIM(@idioma)),
+                descripcion_pieza = TRIM(@descripcion_pieza)
             WHERE id_pieza = @id_pieza;
         END
         ELSE IF @Accion = 'B'
@@ -357,7 +369,8 @@ GO
 CREATE OR ALTER PROCEDURE comercial.sp_EXHIBICION_PUBLICITARIA_ABM
     @Accion              CHAR(1),
     @id_exhibicion       INT             = NULL,
-    @id_partido          INT             = NULL,
+    @id_fase             INT             = NULL,
+    @nro_partido_fase    INT             = NULL,
     @id_anunciante       INT             = NULL,
     @id_campania         INT             = NULL,
     @id_pieza            INT             = NULL,
@@ -369,73 +382,79 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @ErroresAcumulados NVARCHAR(MAX) = N'';
+    DECLARE @SaltoLinea NVARCHAR(2) = CHAR(13) + CHAR(10);
 
     -- 1. Validación de Acción
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
-        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + CHAR(13);
+        SET @ErroresAcumulados += N'- La acción es obligatoria y debe ser A (Alta), M (Modificación) o B (Baja).' + @SaltoLinea;
 
     -- 2. Validación de Clave Primaria
     IF @id_exhibicion IS NULL
-        SET @ErroresAcumulados += N'- El id_exhibicion es obligatorio.' + CHAR(13);
+        SET @ErroresAcumulados += N'- El id_exhibicion es obligatorio.' + @SaltoLinea;
 
     -- 3. Existencia / Duplicidad de PK
     IF @id_exhibicion IS NOT NULL
     BEGIN
         IF @Accion = 'A' AND EXISTS (SELECT 1 FROM comercial.EXHIBICION_PUBLICITARIA WHERE id_exhibicion = @id_exhibicion)
-            SET @ErroresAcumulados += N'- La exhibición publicitaria ya existe en la base de datos (PK duplicada).' + CHAR(13);
+            SET @ErroresAcumulados += N'- La exhibición publicitaria ya existe en la base de datos (PK duplicada).' + @SaltoLinea;
 
         IF @Accion IN ('M', 'B') AND NOT EXISTS (SELECT 1 FROM comercial.EXHIBICION_PUBLICITARIA WHERE id_exhibicion = @id_exhibicion)
-            SET @ErroresAcumulados += N'- La exhibición publicitaria indicada no existe en la base de datos.' + CHAR(13);
+            SET @ErroresAcumulados += N'- La exhibición publicitaria indicada no existe en la base de datos.' + @SaltoLinea;
     END;
 
     -- 4. Validaciones de dominio e integridad para Alta y Modificación
     IF @Accion IN ('A', 'M')
     BEGIN
-        -- Partido en PARTIDO
-        IF @id_partido IS NULL
-            SET @ErroresAcumulados += N'- El id_partido es obligatorio.' + CHAR(13);
-        ELSE IF NOT EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_partido = @id_partido)
-            SET @ErroresAcumulados += N'- El id_partido especificado no existe en la tabla PARTIDO.' + CHAR(13);
+        -- Partido en PARTIDO (PK compuesta: id_fase, nro_partido_fase)
+        IF @id_fase IS NULL OR @nro_partido_fase IS NULL
+            SET @ErroresAcumulados += N'- Los datos del partido (id_fase y nro_partido_fase) son obligatorios.' + @SaltoLinea;
+        ELSE IF NOT EXISTS (
+            SELECT 1 
+            FROM torneo.PARTIDO 
+            WHERE id_fase = @id_fase 
+              AND nro_partido_fase = @nro_partido_fase
+        )
+            SET @ErroresAcumulados += N'- El partido especificado (id_fase, nro_partido_fase) no existe en la tabla PARTIDO.' + @SaltoLinea;
 
         -- Anunciante en ANUNCIANTE
         IF @id_anunciante IS NULL
-            SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_anunciante es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM comercial.ANUNCIANTE WHERE id_anunciante = @id_anunciante)
-            SET @ErroresAcumulados += N'- El id_anunciante especificado no existe en la tabla ANUNCIANTE.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_anunciante especificado no existe en la tabla ANUNCIANTE.' + @SaltoLinea;
 
         -- Campaña en CAMPANIA_PUBLICITARIA
         IF @id_campania IS NULL
-            SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_campania es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM comercial.CAMPANIA_PUBLICITARIA WHERE id_campania = @id_campania)
-            SET @ErroresAcumulados += N'- El id_campania especificado no existe en la tabla CAMPANIA_PUBLICITARIA.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_campania especificado no existe en la tabla CAMPANIA_PUBLICITARIA.' + @SaltoLinea;
 
         -- Pieza en PIEZA_PUBLICITARIA
         IF @id_pieza IS NULL
-            SET @ErroresAcumulados += N'- El id_pieza es obligatorio.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_pieza es obligatorio.' + @SaltoLinea;
         ELSE IF NOT EXISTS (SELECT 1 FROM comercial.PIEZA_PUBLICITARIA WHERE id_pieza = @id_pieza)
-            SET @ErroresAcumulados += N'- El id_pieza especificado no existe en la tabla PIEZA_PUBLICITARIA.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El id_pieza especificado no existe en la tabla PIEZA_PUBLICITARIA.' + @SaltoLinea;
 
         -- Posición de letrero BETWEEN 1 AND 4
         IF @letrero_posicion IS NULL OR @letrero_posicion < 1 OR @letrero_posicion > 4
-            SET @ErroresAcumulados += N'- El letrero_posicion debe estar comprendido entre 1 y 4.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El letrero_posicion debe estar comprendido entre 1 y 4.' + @SaltoLinea;
 
         -- Minutos de exhibición
         IF @minuto_inicio IS NULL OR @minuto_inicio < 0
-            SET @ErroresAcumulados += N'- El minuto_inicio debe ser mayor o igual a 0.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El minuto_inicio debe ser mayor o igual a 0.' + @SaltoLinea;
 
-        IF @minuto_fin IS NULL OR @minuto_fin <= @minuto_inicio
-            SET @ErroresAcumulados += N'- El minuto_fin debe ser estrictamente mayor al minuto_inicio.' + CHAR(13);
+        IF @minuto_fin IS NULL OR (@minuto_inicio IS NOT NULL AND @minuto_fin <= @minuto_inicio)
+            SET @ErroresAcumulados += N'- El minuto_fin es obligatorio y debe ser estrictamente mayor al minuto_inicio.' + @SaltoLinea;
 
         -- Costo calculado USD >= 0
         IF @costo_calculado_usd IS NULL OR @costo_calculado_usd < 0
-            SET @ErroresAcumulados += N'- El costo calculado en USD debe ser mayor o igual a 0.' + CHAR(13);
+            SET @ErroresAcumulados += N'- El costo calculado en USD debe ser mayor o igual a 0.' + @SaltoLinea;
     END;
 
     -- Consolidación de errores
     IF LEN(@ErroresAcumulados) > 0
     BEGIN
-        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_EXHIBICION_PUBLICITARIA_ABM:' 
-                                 + CHAR(13) + @ErroresAcumulados;
+        SET @ErroresAcumulados = N'Se encontraron los siguientes errores en comercial.sp_EXHIBICION_PUBLICITARIA_ABM (Acción: ' + ISNULL(@Accion, 'NULL') + N'):' 
+                                 + @SaltoLinea + @ErroresAcumulados;
         THROW 50000, @ErroresAcumulados, 1;
         RETURN;
     END;
@@ -446,18 +465,19 @@ BEGIN
         IF @Accion = 'A'
         BEGIN
             INSERT INTO comercial.EXHIBICION_PUBLICITARIA (
-                id_exhibicion, id_partido, id_anunciante, id_campania, id_pieza, 
+                id_exhibicion, id_fase, nro_partido_fase, id_anunciante, id_campania, id_pieza, 
                 letrero_posicion, minuto_inicio, minuto_fin, costo_calculado_usd
             )
             VALUES (
-                @id_exhibicion, @id_partido, @id_anunciante, @id_campania, @id_pieza, 
+                @id_exhibicion, @id_fase, @nro_partido_fase, @id_anunciante, @id_campania, @id_pieza, 
                 @letrero_posicion, @minuto_inicio, @minuto_fin, @costo_calculado_usd
             );
         END
         ELSE IF @Accion = 'M'
         BEGIN
             UPDATE comercial.EXHIBICION_PUBLICITARIA
-            SET id_partido          = @id_partido,
+            SET id_fase             = @id_fase,
+                nro_partido_fase    = @nro_partido_fase,
                 id_anunciante       = @id_anunciante,
                 id_campania         = @id_campania,
                 id_pieza            = @id_pieza,
