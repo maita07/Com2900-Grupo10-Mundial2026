@@ -30,7 +30,7 @@ USE DB_Mundial2026_Grupo10;
 GO 
 
 CREATE OR ALTER PROCEDURE torneo.sp_SELECCION_ABM (@Accion CHAR(1), -- 'A' (Alta),'M'(Modificacion), 'B' (Baja)
-                                                   @Id_Seleccion CHAR(3),
+                                                   @Id_Seleccion INT,
                                                    @Id_Confederacion INT,
                                                    @Id_Pais CHAR(3) = NULL,
                                                    @Nombre_Seleccion VARCHAR(50) = NULL,
@@ -42,31 +42,100 @@ BEGIN
     IF @Accion NOT IN ('A', 'M', 'B') OR @Accion IS NULL
         SET @ErroresAcumulados += '- La acción es obligatoria (A, M o B).' + CHAR(13);
 
-    IF @Id_Seleccion IS NULL OR LEN(@Id_Seleccion) <> 3
-        SET @ErroresAcumulados += '- El ID de la selección es obligatorio y debe tener 3 caracteres.' + CHAR(13);
+    IF @Id_Seleccion IS NULL OR @Id_Seleccion <= 0
+        SET @ErroresAcumulados += '- El ID de la selección es obligatorio y debe ser mayor a 0.' + CHAR(13);
 
-    IF @Id_Confederacion NOT IN (SELECT id_confederacion FROM geografia.CONFEDERACION)
-        SET @ErroresAcumulados += '- La confederacion indicada no existe.' + CHAR(13);
+    IF @Accion IN ('A', 'M')
+    BEGIN
+        -- Confederación
+        IF @Id_Confederacion IS NULL OR NOT EXISTS (SELECT 1 FROM geografia.CONFEDERACION WHERE id_confederacion = @Id_Confederacion)
+            SET @ErroresAcumulados += '- La confederación indicada no existe o no fue especificada.' + CHAR(13);
 
-    IF @Id_Pais NOT IN (SELECT id_pais FROM geografia.PAIS)
-      SET @ErroresAcumulados += '- El país indicado no existe.' + CHAR(13);
+        -- País
+        IF @Id_Pais IS NULL OR NOT EXISTS (SELECT 1 FROM geografia.PAIS WHERE id_pais = @Id_Pais)
+            SET @ErroresAcumulados += '- El país indicado no existe o no fue especificado.' + CHAR(13);
 
-    IF @Grupo NOT BETWEEN 'A' AND 'L'
-      SET @ErroresAcumulados += '- El grupo indicado no es válido (A-L).' + CHAR(13);
+        -- Grupo (Dominio A-L)
+        IF @Grupo IS NULL OR @Grupo NOT BETWEEN 'A' AND 'L'
+            SET @ErroresAcumulados += '- El grupo indicado no es válido (debe ser entre A y L).' + CHAR(13);
 
-    IF @Nombre_Seleccion IS NULL OR LEN(@Nombre_Seleccion) <= 0
-      SET @ErroresAcumulados += '- El nombre de la selección es obligatorio y no puede estar vacío.' + CHAR(13);
+        -- Nombre Selección
+        IF @Nombre_Seleccion IS NULL OR LEN(LTRIM(RTRIM(@Nombre_Seleccion))) = 0
+            SET @ErroresAcumulados += '- El nombre de la selección es obligatorio y no puede estar vacío.' + CHAR(13);
+    END;
+
+    IF @Accion = 'A'
+    BEGIN
+        IF EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- Ya existe una selección con el ID indicado (PK repetida).' + CHAR(13);
+    END;
+
+    IF @Accion = 'M'
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección que intenta modificar no existe.' + CHAR(13);
+    END;
 
     IF @Accion = 'B'
     BEGIN
-      IF EXISTS (SELECT 1 FROM torneo.CONVOCATORIA WHERE id_seleccion = @Id_Seleccion)
-        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene convocatorias asociadas.' + CHAR(13);
+        IF NOT EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección que intenta eliminar no existe.' + CHAR(13);
 
-      IF EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_seleccion_local = @Id_Seleccion OR id_seleccion_visitante = @Id_Seleccion)
-        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene partidos asociados.' + CHAR(13);
+        IF EXISTS (SELECT 1 FROM torneo.CONVOCATORIA WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene convocatorias asociadas.' + CHAR(13);
 
-      IF EXISTS (SELECT 1 FROM persona.CUERPO_TECNICO WHERE id_seleccion = @Id_Seleccion)
-        SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene cuerpo técnico asociado.' + CHAR(13);
+        IF EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_seleccion_local = @Id_Seleccion OR id_seleccion_visitante = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene partidos asociados.' + CHAR(13);
+
+        IF EXISTS (SELECT 1 FROM persona.CUERPO_TECNICO WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene cuerpo técnico asociado.' + CHAR(13);
+    END;IF @Id_Seleccion IS NULL OR @Id_Seleccion <= 0
+        SET @ErroresAcumulados += '- El ID de la selección es obligatorio y debe ser mayor a 0.' + CHAR(13);
+
+    IF @Accion IN ('A', 'M')
+    BEGIN
+        -- Confederación
+        IF @Id_Confederacion IS NULL OR NOT EXISTS (SELECT 1 FROM geografia.CONFEDERACION WHERE id_confederacion = @Id_Confederacion)
+            SET @ErroresAcumulados += '- La confederación indicada no existe o no fue especificada.' + CHAR(13);
+
+        -- País
+        IF @Id_Pais IS NULL OR NOT EXISTS (SELECT 1 FROM geografia.PAIS WHERE id_pais = @Id_Pais)
+            SET @ErroresAcumulados += '- El país indicado no existe o no fue especificado.' + CHAR(13);
+
+        -- Grupo (Dominio A-L)
+        IF @Grupo IS NULL OR @Grupo NOT BETWEEN 'A' AND 'L'
+            SET @ErroresAcumulados += '- El grupo indicado no es válido (debe ser entre A y L).' + CHAR(13);
+
+        -- Nombre Selección
+        IF @Nombre_Seleccion IS NULL OR LEN(LTRIM(RTRIM(@Nombre_Seleccion))) = 0
+            SET @ErroresAcumulados += '- El nombre de la selección es obligatorio y no puede estar vacío.' + CHAR(13);
+    END;
+
+    IF @Accion = 'A'
+    BEGIN
+        IF EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- Ya existe una selección con el ID indicado (PK repetida).' + CHAR(13);
+    END;
+
+    IF @Accion = 'M'
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección que intenta modificar no existe.' + CHAR(13);
+    END;
+
+    IF @Accion = 'B'
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM torneo.SELECCION WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección que intenta eliminar no existe.' + CHAR(13);
+
+        IF EXISTS (SELECT 1 FROM torneo.CONVOCATORIA WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene convocatorias asociadas.' + CHAR(13);
+
+        IF EXISTS (SELECT 1 FROM torneo.PARTIDO WHERE id_seleccion_local = @Id_Seleccion OR id_seleccion_visitante = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene partidos asociados.' + CHAR(13);
+
+        IF EXISTS (SELECT 1 FROM persona.CUERPO_TECNICO WHERE id_seleccion = @Id_Seleccion)
+            SET @ErroresAcumulados += '- La selección no se puede eliminar porque tiene cuerpo técnico asociado.' + CHAR(13);
     END;
 
     IF LEN(@ErroresAcumulados)> 0
