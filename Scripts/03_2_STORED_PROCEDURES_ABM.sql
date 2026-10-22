@@ -91,7 +91,7 @@ SET NOCOUNT ON;
         IF @fecha_nacimiento IS NULL
             SET @ErroresAcumulados += '- La fecha de nacimiento es obligatoria.' + CHAR(13);
         ELSE IF @fecha_nacimiento >= GETDATE()
-            SET @ErroresAcumulados += '- La fecha de nacimiento debe ser en el pasado.' + CHAR(13);
+            SET @ErroresAcumulados += '- La fecha de nacimiento debe ser valida.' + CHAR(13);
 
         IF @id_nacionalidad_pais IS NULL OR LEN(TRIM(@id_nacionalidad_pais)) <> 3
             SET @ErroresAcumulados += '- El código de país de nacionalidad debe tener 3 caracteres.' + CHAR(13);
