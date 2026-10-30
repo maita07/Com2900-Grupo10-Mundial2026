@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Mundial2026 edicion="2026" fuenteFixture="FIFA" nota="Fixture final disputado; fechaLocal y fechaUtc indican el inicio programado. Los códigos local/visitante son códigos de selección.">
+    <Sedes>
+        <Sede id="1" pais="USA" estadio="Atlanta Stadium" estadioNombre="Mercedes-Benz Stadium" ciudad="Atlanta" capacidad="68239" huso="UTC-4" />
+        <Sede id="2" pais="CAN" estadio="BC Place Vancouver" estadioNombre="BC Place" ciudad="Vancouver" capacidad="52497" huso="UTC-7" />
+        <Sede id="3" pais="USA" estadio="Boston Stadium" estadioNombre="Gillette Stadium" ciudad="Foxborough" capacidad="64146" huso="UTC-4" />
+        <Sede id="4" pais="USA" estadio="Dallas Stadium" estadioNombre="AT&amp;T Stadium" ciudad="Arlington" capacidad="70649" huso="UTC-5" />
+        <Sede id="5" pais="MEX" estadio="Estadio Guadalajara" estadioNombre="Estadio Akron" ciudad="Guadalajara" capacidad="45664" huso="UTC-6" />
+        <Sede id="6" pais="USA" estadio="Houston Stadium" estadioNombre="NRG Stadium" ciudad="Houston" capacidad="68777" huso="UTC-5" />
+        <Sede id="7" pais="USA" estadio="Kansas City Stadium" estadioNombre="Arrowhead Stadium" ciudad="Kansas City" capacidad="69045" huso="UTC-5" />
+        <Sede id="8" pais="USA" estadio="Los Angeles Stadium" estadioNombre="SoFi Stadium" ciudad="Inglewood" capacidad="70492" huso="UTC-7" />
+        <Sede id="9" pais="MEX" estadio="Mexico City Stadium" estadioNombre="Estadio Azteca" ciudad="Ciudad de México" capacidad="80824" huso="UTC-6" />
+        <Sede id="10" pais="USA" estadio="Miami Stadium" estadioNombre="Hard Rock Stadium" ciudad="Miami Gardens" capacidad="64478" huso="UTC-4" />
+        <Sede id="11" pais="MEX" estadio="Monterrey Stadium" estadioNombre="Estadio BBVA" ciudad="Guadalupe, área metropolitana de Monterrey" capacidad="51243" huso="UTC-6" />
+        <Sede id="12" pais="USA" estadio="New York New Jersey Stadium" estadioNombre="MetLife Stadium" ciudad="East Rutherford" capacidad="80663" huso="UTC-4" />
+        <Sede id="13" pais="USA" estadio="Philadelphia Stadium" estadioNombre="Lincoln Financial Field" ciudad="Filadelfia" capacidad="68324" huso="UTC-4" />
+        <Sede id="14" pais="USA" estadio="San Francisco Bay Area Stadium" estadioNombre="Levi's Stadium" ciudad="Santa Clara" capacidad="68827" huso="UTC-7" />
+        <Sede id="15" pais="USA" estadio="Seattle Stadium" estadioNombre="Lumen Field" ciudad="Seattle" capacidad="66925" huso="UTC-7" />
+        <Sede id="16" pais="CAN" estadio="Toronto Stadium" estadioNombre="BMO Field" ciudad="Toronto" capacidad="43036" huso="UTC-4" />
+    </Sedes>
+    <Partidos>
+        <Partido fase="1" nro="1" sede="9" local="MEX" visitante="RSA" fechaUtc="2026-06-11T19:00:00" fechaLocal="2026-06-11T13:00:00" grupo="A" />
+        <Partido fase="1" nro="2" sede="5" local="KOR" visitante="CZE" fechaUtc="2026-06-12T02:00:00" fechaLocal="2026-06-11T20:00:00" grupo="A" />
+        <Partido fase="1" nro="3" sede="16" local="CAN" visitante="BIH" fechaUtc="2026-06-12T19:00:00" fechaLocal="2026-06-12T15:00:00" grupo="B" />
+        <Partido fase="1" nro="4" sede="8" local="USA" visitante="PAR" fechaUtc="2026-06-13T01:00:00" fechaLocal="2026-06-12T18:00:00" grupo="D" />
+        <Partido fase="1" nro="5" sede="14" local="QAT" visitante="SUI" fechaUtc="2026-06-13T19:00:00" fechaLocal="2026-06-13T12:00:00" grupo="B" />
+        <Partido fase="1" nro="6" sede="12" local="BRA" visitante="MAR" fechaUtc="2026-06-13T22:00:00" fechaLocal="2026-06-13T18:00:00" grupo="C" />
+        <Partido fase="1" nro="7" sede="3" local="HTI" visitante="SCO" fechaUtc="2026-06-14T01:00:00" fechaLocal="2026-06-13T21:00:00" grupo="C" />
+        <Partido fase="1" nro="8" sede="2" local="AUS" visitante="TUR" fechaUtc="2026-06-14T04:00:00" fechaLocal="2026-06-13T21:00:00" grupo="D" />
+        <Partido fase="1" nro="9" sede="6" local="GER" visitante="CUW" fechaUtc="2026-06-14T17:00:00" fechaLocal="2026-06-14T12:00:00" grupo="E" />
+        <Partido fase="1" nro="10" sede="4" local="NED" visitante="JPN" fechaUtc="2026-06-14T20:00:00" fechaLocal="2026-06-14T15:00:00" grupo="F" />
+        <Partido fase="1" nro="11" sede="13" local="CIV" visitante="ECU" fechaUtc="2026-06-14T23:00:00" fechaLocal="2026-06-14T19:00:00" grupo="E" />
+        <Partido fase="1" nro="12" sede="11" local="SWE" visitante="TUN" fechaUtc="2026-06-15T02:00:00" fechaLocal="2026-06-14T20:00:00" grupo="F" />
+        <Partido fase="1" nro="13" sede="1" local="ESP" visitante="CPV" fechaUtc="2026-06-15T16:00:00" fechaLocal="2026-06-15T12:00:00" grupo="H" />
+        <Partido fase="1" nro="14" sede="15" local="BEL" visitante="EGY" fechaUtc="2026-06-15T19:00:00" fechaLocal="2026-06-15T12:00:00" grupo="G" />
+        <Partido fase="1" nro="15" sede="10" local="SAU" visitante="URU" fechaUtc="2026-06-15T22:00:00" fechaLocal="2026-06-15T18:00:00" grupo="H" />
+        <Partido fase="1" nro="16" sede="8" local="IRN" visitante="NZL" fechaUtc="2026-06-16T01:00:00" fechaLocal="2026-06-15T18:00:00" grupo="G" />
+        <Partido fase="1" nro="17" sede="12" local="FRA" visitante="SEN" fechaUtc="2026-06-16T19:00:00" fechaLocal="2026-06-16T15:00:00" grupo="I" />
+        <Partido fase="1" nro="18" sede="3" local="IRQ" visitante="NOR" fechaUtc="2026-06-16T22:00:00" fechaLocal="2026-06-16T18:00:00" grupo="I" />
+        <Partido fase="1" nro="19" sede="7" local="ARG" visitante="DZA" fechaUtc="2026-06-17T01:00:00" fechaLocal="2026-06-16T20:00:00" grupo="J" />
+        <Partido fase="1" nro="20" sede="14" local="AUT" visitante="JOR" fechaUtc="2026-06-17T04:00:00" fechaLocal="2026-06-16T21:00:00" grupo="J" />
+        <Partido fase="1" nro="21" sede="6" local="POR" visitante="COD" fechaUtc="2026-06-17T17:00:00" fechaLocal="2026-06-17T12:00:00" grupo="K" />
+        <Partido fase="1" nro="22" sede="4" local="ENG" visitante="CRO" fechaUtc="2026-06-17T20:00:00" fechaLocal="2026-06-17T15:00:00" grupo="L" />
+        <Partido fase="1" nro="23" sede="16" local="GHA" visitante="PAN" fechaUtc="2026-06-17T23:00:00" fechaLocal="2026-06-17T19:00:00" grupo="L" />
+        <Partido fase="1" nro="24" sede="9" local="UZB" visitante="COL" fechaUtc="2026-06-18T02:00:00" fechaLocal="2026-06-17T20:00:00" grupo="K" />
+        <Partido fase="1" nro="25" sede="1" local="CZE" visitante="RSA" fechaUtc="2026-06-18T16:00:00" fechaLocal="2026-06-18T12:00:00" grupo="A" />
+        <Partido fase="1" nro="26" sede="8" local="SUI" visitante="BIH" fechaUtc="2026-06-18T19:00:00" fechaLocal="2026-06-18T12:00:00" grupo="B" />
+        <Partido fase="1" nro="27" sede="2" local="CAN" visitante="QAT" fechaUtc="2026-06-18T22:00:00" fechaLocal="2026-06-18T15:00:00" grupo="B" />
+        <Partido fase="1" nro="28" sede="5" local="MEX" visitante="KOR" fechaUtc="2026-06-19T01:00:00" fechaLocal="2026-06-18T19:00:00" grupo="A" />
+        <Partido fase="1" nro="29" sede="15" local="USA" visitante="AUS" fechaUtc="2026-06-19T19:00:00" fechaLocal="2026-06-19T12:00:00" grupo="D" />
+        <Partido fase="1" nro="30" sede="3" local="SCO" visitante="MAR" fechaUtc="2026-06-19T22:00:00" fechaLocal="2026-06-19T18:00:00" grupo="C" />
+        <Partido fase="1" nro="31" sede="14" local="TUR" visitante="PAR" fechaUtc="2026-06-20T03:00:00" fechaLocal="2026-06-19T20:00:00" grupo="D" />
+        <Partido fase="1" nro="32" sede="13" local="BRA" visitante="HTI" fechaUtc="2026-06-20T00:30:00" fechaLocal="2026-06-19T20:30:00" grupo="C" />
+        <Partido fase="1" nro="33" sede="6" local="NED" visitante="SWE" fechaUtc="2026-06-20T17:00:00" fechaLocal="2026-06-20T12:00:00" grupo="F" />
+        <Partido fase="1" nro="34" sede="16" local="GER" visitante="CIV" fechaUtc="2026-06-20T20:00:00" fechaLocal="2026-06-20T16:00:00" grupo="E" />
+        <Partido fase="1" nro="35" sede="7" local="ECU" visitante="CUW" fechaUtc="2026-06-21T00:00:00" fechaLocal="2026-06-20T19:00:00" grupo="E" />
+        <Partido fase="1" nro="36" sede="11" local="TUN" visitante="JPN" fechaUtc="2026-06-21T04:00:00" fechaLocal="2026-06-20T22:00:00" grupo="F" />
+        <Partido fase="1" nro="37" sede="1" local="ESP" visitante="SAU" fechaUtc="2026-06-21T16:00:00" fechaLocal="2026-06-21T12:00:00" grupo="H" />
+        <Partido fase="1" nro="38" sede="8" local="BEL" visitante="IRN" fechaUtc="2026-06-21T19:00:00" fechaLocal="2026-06-21T12:00:00" grupo="G" />
+        <Partido fase="1" nro="39" sede="10" local="URU" visitante="CPV" fechaUtc="2026-06-21T22:00:00" fechaLocal="2026-06-21T18:00:00" grupo="H" />
+        <Partido fase="1" nro="40" sede="2" local="NZL" visitante="EGY" fechaUtc="2026-06-22T01:00:00" fechaLocal="2026-06-21T18:00:00" grupo="G" />
+        <Partido fase="1" nro="41" sede="4" local="ARG" visitante="AUT" fechaUtc="2026-06-22T17:00:00" fechaLocal="2026-06-22T12:00:00" grupo="J" />
+        <Partido fase="1" nro="42" sede="13" local="FRA" visitante="IRQ" fechaUtc="2026-06-22T21:00:00" fechaLocal="2026-06-22T17:00:00" grupo="I" />
+        <Partido fase="1" nro="43" sede="12" local="NOR" visitante="SEN" fechaUtc="2026-06-23T00:00:00" fechaLocal="2026-06-22T20:00:00" grupo="I" />
+        <Partido fase="1" nro="44" sede="14" local="JOR" visitante="DZA" fechaUtc="2026-06-23T03:00:00" fechaLocal="2026-06-22T20:00:00" grupo="J" />
+        <Partido fase="1" nro="45" sede="6" local="POR" visitante="UZB" fechaUtc="2026-06-23T17:00:00" fechaLocal="2026-06-23T12:00:00" grupo="K" />
+        <Partido fase="1" nro="46" sede="3" local="ENG" visitante="GHA" fechaUtc="2026-06-23T20:00:00" fechaLocal="2026-06-23T16:00:00" grupo="L" />
+        <Partido fase="1" nro="47" sede="16" local="PAN" visitante="CRO" fechaUtc="2026-06-23T23:00:00" fechaLocal="2026-06-23T19:00:00" grupo="L" />
+        <Partido fase="1" nro="48" sede="5" local="COL" visitante="COD" fechaUtc="2026-06-24T02:00:00" fechaLocal="2026-06-23T20:00:00" grupo="K" />
+        <Partido fase="1" nro="49" sede="2" local="SUI" visitante="CAN" fechaUtc="2026-06-24T19:00:00" fechaLocal="2026-06-24T12:00:00" grupo="B" />
+        <Partido fase="1" nro="50" sede="15" local="BIH" visitante="QAT" fechaUtc="2026-06-24T19:00:00" fechaLocal="2026-06-24T12:00:00" grupo="B" />
+        <Partido fase="1" nro="51" sede="10" local="SCO" visitante="BRA" fechaUtc="2026-06-24T22:00:00" fechaLocal="2026-06-24T18:00:00" grupo="C" />
+        <Partido fase="1" nro="52" sede="1" local="MAR" visitante="HTI" fechaUtc="2026-06-24T22:00:00" fechaLocal="2026-06-24T18:00:00" grupo="C" />
+        <Partido fase="1" nro="53" sede="9" local="CZE" visitante="MEX" fechaUtc="2026-06-25T01:00:00" fechaLocal="2026-06-24T19:00:00" grupo="A" />
+        <Partido fase="1" nro="54" sede="11" local="RSA" visitante="KOR" fechaUtc="2026-06-25T01:00:00" fechaLocal="2026-06-24T19:00:00" grupo="A" />
+        <Partido fase="1" nro="55" sede="13" local="CUW" visitante="CIV" fechaUtc="2026-06-25T20:00:00" fechaLocal="2026-06-25T16:00:00" grupo="E" />
+        <Partido fase="1" nro="56" sede="12" local="ECU" visitante="GER" fechaUtc="2026-06-25T20:00:00" fechaLocal="2026-06-25T16:00:00" grupo="E" />
+        <Partido fase="1" nro="57" sede="4" local="JPN" visitante="SWE" fechaUtc="2026-06-25T23:00:00" fechaLocal="2026-06-25T18:00:00" grupo="F" />
+        <Partido fase="1" nro="58" sede="7" local="TUN" visitante="NED" fechaUtc="2026-06-25T23:00:00" fechaLocal="2026-06-25T18:00:00" grupo="F" />
+        <Partido fase="1" nro="59" sede="8" local="TUR" visitante="USA" fechaUtc="2026-06-26T02:00:00" fechaLocal="2026-06-25T19:00:00" grupo="D" />
+        <Partido fase="1" nro="60" sede="14" local="PAR" visitante="AUS" fechaUtc="2026-06-26T02:00:00" fechaLocal="2026-06-25T19:00:00" grupo="D" />
+        <Partido fase="1" nro="61" sede="3" local="NOR" visitante="FRA" fechaUtc="2026-06-26T19:00:00" fechaLocal="2026-06-26T15:00:00" grupo="I" />
+        <Partido fase="1" nro="62" sede="16" local="SEN" visitante="IRQ" fechaUtc="2026-06-26T19:00:00" fechaLocal="2026-06-26T15:00:00" grupo="I" />
+        <Partido fase="1" nro="63" sede="5" local="URU" visitante="ESP" fechaUtc="2026-06-27T00:00:00" fechaLocal="2026-06-26T18:00:00" grupo="H" />
+        <Partido fase="1" nro="64" sede="6" local="CPV" visitante="SAU" fechaUtc="2026-06-27T00:00:00" fechaLocal="2026-06-26T19:00:00" grupo="H" />
+        <Partido fase="1" nro="65" sede="15" local="EGY" visitante="IRN" fechaUtc="2026-06-27T03:00:00" fechaLocal="2026-06-26T20:00:00" grupo="G" />
+        <Partido fase="1" nro="66" sede="2" local="NZL" visitante="BEL" fechaUtc="2026-06-27T03:00:00" fechaLocal="2026-06-26T20:00:00" grupo="G" />
+        <Partido fase="1" nro="67" sede="12" local="PAN" visitante="ENG" fechaUtc="2026-06-27T21:00:00" fechaLocal="2026-06-27T17:00:00" grupo="L" />
+        <Partido fase="1" nro="68" sede="13" local="CRO" visitante="GHA" fechaUtc="2026-06-27T21:00:00" fechaLocal="2026-06-27T17:00:00" grupo="L" />
+        <Partido fase="1" nro="69" sede="10" local="COL" visitante="POR" fechaUtc="2026-06-27T23:30:00" fechaLocal="2026-06-27T19:30:00" grupo="K" />
+        <Partido fase="1" nro="70" sede="1" local="COD" visitante="UZB" fechaUtc="2026-06-27T23:30:00" fechaLocal="2026-06-27T19:30:00" grupo="K" />
+        <Partido fase="1" nro="71" sede="4" local="JOR" visitante="ARG" fechaUtc="2026-06-28T02:00:00" fechaLocal="2026-06-27T21:00:00" grupo="J" />
+        <Partido fase="1" nro="72" sede="7" local="DZA" visitante="AUT" fechaUtc="2026-06-28T02:00:00" fechaLocal="2026-06-27T21:00:00" grupo="J" />
+        <Partido fase="2" nro="73" sede="8" local="RSA" visitante="CAN" fechaUtc="2026-06-28T19:00:00" fechaLocal="2026-06-28T12:00:00" />
+        <Partido fase="2" nro="74" sede="3" local="GER" visitante="PAR" fechaUtc="2026-06-29T16:00:00" fechaLocal="2026-06-29T12:00:00" />
+        <Partido fase="2" nro="75" sede="11" local="NED" visitante="MAR" fechaUtc="2026-06-29T22:30:00" fechaLocal="2026-06-29T16:30:00" />
+        <Partido fase="2" nro="76" sede="6" local="BRA" visitante="JPN" fechaUtc="2026-06-30T00:00:00" fechaLocal="2026-06-29T19:00:00" />
+        <Partido fase="2" nro="77" sede="12" local="FRA" visitante="SWE" fechaUtc="2026-06-30T16:00:00" fechaLocal="2026-06-30T12:00:00" />
+        <Partido fase="2" nro="78" sede="4" local="CIV" visitante="NOR" fechaUtc="2026-06-30T22:00:00" fechaLocal="2026-06-30T17:00:00" />
+        <Partido fase="2" nro="79" sede="9" local="MEX" visitante="ECU" fechaUtc="2026-07-01T01:00:00" fechaLocal="2026-06-30T19:00:00" />
+        <Partido fase="2" nro="80" sede="1" local="ENG" visitante="COD" fechaUtc="2026-07-01T16:00:00" fechaLocal="2026-07-01T12:00:00" />
+        <Partido fase="2" nro="81" sede="14" local="USA" visitante="BIH" fechaUtc="2026-07-01T20:00:00" fechaLocal="2026-07-01T13:00:00" />
+        <Partido fase="2" nro="82" sede="15" local="BEL" visitante="SEN" fechaUtc="2026-07-02T00:00:00" fechaLocal="2026-07-01T17:00:00" />
+        <Partido fase="2" nro="83" sede="16" local="POR" visitante="CRO" fechaUtc="2026-07-02T16:00:00" fechaLocal="2026-07-02T12:00:00" />
+        <Partido fase="2" nro="84" sede="8" local="ESP" visitante="AUT" fechaUtc="2026-07-03T02:00:00" fechaLocal="2026-07-02T19:00:00" />
+        <Partido fase="2" nro="85" sede="2" local="SUI" visitante="DZA" fechaUtc="2026-07-03T03:00:00" fechaLocal="2026-07-02T20:00:00" />
+        <Partido fase="2" nro="86" sede="10" local="ARG" visitante="CPV" fechaUtc="2026-07-03T17:00:00" fechaLocal="2026-07-03T13:00:00" />
+        <Partido fase="2" nro="87" sede="7" local="COL" visitante="GHA" fechaUtc="2026-07-03T23:00:00" fechaLocal="2026-07-03T18:00:00" />
+        <Partido fase="2" nro="88" sede="4" local="AUS" visitante="EGY" fechaUtc="2026-07-04T01:30:00" fechaLocal="2026-07-03T20:30:00" />
+        <Partido fase="3" nro="89" sede="13" local="PAR" visitante="FRA" fechaUtc="2026-07-04T16:00:00" fechaLocal="2026-07-04T12:00:00" />
+        <Partido fase="3" nro="90" sede="6" local="CAN" visitante="MAR" fechaUtc="2026-07-04T22:00:00" fechaLocal="2026-07-04T17:00:00" />
+        <Partido fase="3" nro="91" sede="12" local="BRA" visitante="NOR" fechaUtc="2026-07-05T20:00:00" fechaLocal="2026-07-05T16:00:00" />
+        <Partido fase="3" nro="92" sede="9" local="MEX" visitante="ENG" fechaUtc="2026-07-06T00:00:00" fechaLocal="2026-07-05T18:00:00" />
+        <Partido fase="3" nro="93" sede="4" local="POR" visitante="ESP" fechaUtc="2026-07-06T19:00:00" fechaLocal="2026-07-06T14:00:00" />
+        <Partido fase="3" nro="94" sede="15" local="USA" visitante="BEL" fechaUtc="2026-07-07T00:00:00" fechaLocal="2026-07-06T17:00:00" />
+        <Partido fase="3" nro="95" sede="1" local="ARG" visitante="EGY" fechaUtc="2026-07-07T16:00:00" fechaLocal="2026-07-07T12:00:00" />
+        <Partido fase="3" nro="96" sede="2" local="SUI" visitante="COL" fechaUtc="2026-07-07T20:00:00" fechaLocal="2026-07-07T13:00:00" />
+        <Partido fase="4" nro="97" sede="3" local="FRA" visitante="MAR" fechaUtc="2026-07-09T20:00:00" fechaLocal="2026-07-09T16:00:00" />
+        <Partido fase="4" nro="98" sede="8" local="ESP" visitante="BEL" fechaUtc="2026-07-10T19:00:00" fechaLocal="2026-07-10T12:00:00" />
+        <Partido fase="4" nro="99" sede="10" local="NOR" visitante="ENG" fechaUtc="2026-07-11T21:00:00" fechaLocal="2026-07-11T17:00:00" />
+        <Partido fase="4" nro="100" sede="7" local="ARG" visitante="SUI" fechaUtc="2026-07-12T01:00:00" fechaLocal="2026-07-11T20:00:00" />
+        <Partido fase="5" nro="101" sede="4" local="FRA" visitante="ESP" fechaUtc="2026-07-14T19:00:00" fechaLocal="2026-07-14T14:00:00" />
+        <Partido fase="5" nro="102" sede="1" local="ENG" visitante="ARG" fechaUtc="2026-07-15T19:00:00" fechaLocal="2026-07-15T15:00:00" />
+        <Partido fase="6" nro="103" sede="10" local="FRA" visitante="ENG" fechaUtc="2026-07-18T21:00:00" fechaLocal="2026-07-18T17:00:00" />
+        <Partido fase="7" nro="104" sede="12" local="ESP" visitante="ARG" fechaUtc="2026-07-19T19:00:00" fechaLocal="2026-07-19T15:00:00" />
+    </Partidos>
+</Mundial2026>
