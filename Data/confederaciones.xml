@@ -1,0 +1,8 @@
+<Confederaciones>
+  <Confederacion id="1" sigla="CONMEBOL" nombre="Confederación Sudamericana de Fútbol" />
+  <Confederacion id="2" sigla="UEFA" nombre="Union of European Football Associations" />
+  <Confederacion id="3" sigla="CONCACAF" nombre="Confederation of North, Central America and Caribbean" />
+  <Confederacion id="4" sigla="CAF" nombre="Confédération Africaine de Football" />
+  <Confederacion id="5" sigla="AFC" nombre="Asian Football Confederation" />
+  <Confederacion id="6" sigla="OFC" nombre="Oceania Football Confederation" />
+</Confederaciones>
