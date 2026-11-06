@@ -28,7 +28,7 @@ GO
 
 -- 1. IMPORTAR CONFEDERACIONES (XML)
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORTAR_CONFEDERACIONES_XML
-    @XmlData XML
+    @RutaArchivo VARCHAR(500)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -42,8 +42,23 @@ BEGIN
 
     BEGIN TRY
         -- 1. VALIDACIÓN PREVIA DE ENTRADA
-        IF @XmlData IS NULL
-            THROW 50001, 'El parámetro XML de confederaciones no puede ser nulo.', 1;
+       IF @RutaArchivo IS NULL OR LTRIM(RTRIM(@RutaArchivo)) = ''
+        THROW 50020, 'La ruta del archivo XML no puede estar vacía.', 1;
+
+        DECLARE @XmlData XML;
+        DECLARE @SQL NVARCHAR(MAX);
+
+        SET @SQL = N'
+            SELECT @XML = CAST(BulkColumn AS XML)
+            FROM OPENROWSET(
+                BULK ''' + REPLACE(@RutaArchivo, '''', '''''') + N''',
+                SINGLE_BLOB
+            ) AS X;';
+
+        EXEC sys.sp_executesql
+            @SQL,
+            N'@XML XML OUTPUT',
+            @XML = @XmlData OUTPUT;
 
         -- 2. TABLA TEMPORAL DE PROCESAMIENTO
         DECLARE @Datos TABLE (
@@ -326,7 +341,7 @@ GO
 
 -- 4. IMPORTAR SEDES, ESTADIOS Y FIXTURE DE PARTIDOS (XML)
 CREATE OR ALTER PROCEDURE torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML
-    @XmlData XML
+    @RutaArchivo VARCHAR(500)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -338,19 +353,24 @@ BEGIN
 
     PRINT '  INICIO IMPORTACIÓN DE SEDES Y FIXTURE (XML)            ';
  
-    IF @XmlData IS NULL
-    BEGIN
-        SET @ErrLinea   = 290;
-        SET @ErrMensaje = 'El parámetro XML de fixture y sedes no puede ser nulo.';
+    -- 1. VALIDACIÓN Y CARGA DEL ARCHIVO XML
+IF @RutaArchivo IS NULL OR LTRIM(RTRIM(@RutaArchivo)) = ''
+    THROW 50020, 'La ruta del archivo XML no puede estar vacía.', 1;
 
-        EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
-            @proceso_origen = @NombreProc,
-            @clave_registro = 'XML_FIXTURE',
-            @mensaje_error  = @ErrMensaje,
-            @linea_error    = @ErrLinea;
+DECLARE @XmlData XML;
+DECLARE @SQL NVARCHAR(MAX);
 
-        THROW 50020, @ErrMensaje, 1;
-    END;
+SET @SQL = N'
+    SELECT @XML = CAST(BulkColumn AS XML)
+    FROM OPENROWSET(
+        BULK ''' + REPLACE(@RutaArchivo, '''', '''''') + N''',
+        SINGLE_BLOB
+    ) AS X;';
+
+EXEC sys.sp_executesql
+    @SQL,
+    N'@XML XML OUTPUT',
+    @XML = @XmlData OUTPUT;
 
     -- 1. TABLAS TEMPORALES DE PROCESAMIENTO
     IF OBJECT_ID('tempdb..#Sedes') IS NOT NULL DROP TABLE #Sedes;
@@ -548,3 +568,5 @@ BEGIN
     END CATCH;
 END;
 GO
+
+

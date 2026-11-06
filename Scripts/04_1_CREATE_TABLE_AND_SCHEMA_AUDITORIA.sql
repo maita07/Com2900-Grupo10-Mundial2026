@@ -65,3 +65,13 @@ SELECT
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_SCHEMA = 'auditoria' AND TABLE_NAME = 'LOG_IMPORTACION';
 GO
+
+CREATE OR ALTER PROCEDURE auditoria.sp_REGISTRAR_ERROR_IMPORTACION (@proceso_origen VARCHAR(100) NULL,
+                                                                    @clave_registro VARCHAR(100) NULL,
+                                                                    @mensaje_error  VARCHAR(MAX)NULL,
+                                                                    @linea_error    INT NULL) as
+BEGIN
+    print @mensaje_error
+END;
+
+SELECT * FROM auditoria.LOG_IMPORTACION
