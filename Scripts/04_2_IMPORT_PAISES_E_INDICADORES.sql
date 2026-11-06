@@ -1,5 +1,5 @@
 /*
----------------------------------------------------------
+--------------------------------------------------------------------------------
 UNLaM - Universidad Nacional de La Matanza
 Departamento de Ingeniería e Investigaciones Tecnológicas
 Materia: Base de Datos Aplicada (Comisión 5600)
@@ -14,44 +14,59 @@ Integrantes:
 - Maita Pitado Jose Gregorio: maita07
 
 Archivo: 04_2_IMPORT_PAISES_E_INDICADORES.sql
-Descripcion: 
-  - Stored Procedure de importación masiva de Países e Indicadores
-  - Paises desde archivo CSV utilizando BULK INSERT y Staging Tables,
-  - Indicadores con consumo de API con registro.
-  - Registro centralizado de auditoría: cualquier fallo de lectura o
-    violación de restricciones se persiste automáticamente en 
-    auditoria.LOG_IMPORTACION mediante el procedimiento
-    auditoria.sp_REGISTRAR_ERROR_IMPORTACION.
----------------------------------------------------------
+Descripcion:
+- Stored Procedure de importación masiva de Países e Indicadores Económicos
+  con rutas pasadas obligatoriamente por parámetro (sin rutas fijas).
+- Lectura de CSV mediante BULK INSERT dinámico y tabla de Staging.
+- Homologación relacional FIFA vs ISO del Banco Mundial.
+- Upsert transaccional en geografia.PAIS y geografia.INDICADOR_ECONOMICO_PAIS.
+- Consumo e importación de cotizaciones vía API REST.
+- Auditoría centralizada de fallos en auditoria.LOG_IMPORTACION.
+--------------------------------------------------------------------------------
 */
 USE DB_Mundial2026_Grupo10;
 GO
 
+-- Habilitación de OLE Automation para el consumo de API HTTP
 EXEC sp_configure 'show advanced options', 1;
 RECONFIGURE WITH OVERRIDE;
 EXEC sp_configure 'Ole Automation Procedures', 1;
 RECONFIGURE WITH OVERRIDE;
 GO
 
+-- 1. PROCEDIMIENTO: IMPORTACIÓN DE PAÍSES E INDICADORES (CSV)
+
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORTAR_PAISES_E_INDICADORES
-    @RutaCSV_Paises VARCHAR(500) = 'C:\Mundial2026\Data\paises.csv',
-    @RutaIndicadoresCSV VARCHAR(500) = 'C:\Mundial2026\Data\indicadores.csv'
+    @RutaCSV_Paises VARCHAR(500) -- Parámetro obligatorio sin ruta fija
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-    PRINT '  INICIO IMPORTACIÓN DE PAÍSES E INDICADORES (CSV)       ';
-
-    DECLARE @NombreProc          VARCHAR(100) = 'geografia.sp_IMPORT_PAISES_E_INDICADORES_CSV';
+    DECLARE @NombreProc          VARCHAR(100) = 'geografia.sp_IMPORTAR_PAISES_E_INDICADORES';
     DECLARE @OrigenDatos         VARCHAR(50)  = 'CSV_BANCO_MUNDIAL';
     DECLARE @CantPaisesTemporal  INT          = 0;
     DECLARE @PeriodoRef          INT          = 2023;
     DECLARE @ErrLinea            INT;
     DECLARE @ErrMensaje          NVARCHAR(4000);
 
+    -- Validación defensiva del parámetro obligatorio
+    IF @RutaCSV_Paises IS NULL OR LTRIM(RTRIM(@RutaCSV_Paises)) = ''
+    BEGIN
+        SET @ErrMensaje = 'Debe especificar obligatoriamente la ruta del archivo CSV de países (@RutaCSV_Paises).';
+        EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
+            @proceso_origen = @NombreProc,
+            @clave_registro = 'PARAMETRO_NULL',
+            @mensaje_error  = @ErrMensaje,
+            @linea_error    = 1;
+        THROW 50010, @ErrMensaje, 1;
+    END;
+
+    PRINT '  INICIO IMPORTACIÓN DE PAÍSES E INDICADORES (CSV)                      ';
+    PRINT '  Archivo recibido por parámetro: ' + @RutaCSV_Paises;
+
     BEGIN TRY
-        
-        -- 1. TABLA TEMPORAL DE PAÍSES
+        -- 1. TABLA TEMPORAL DE PAÍSES NORMALIZADOS
         IF OBJECT_ID('tempdb..#PaisesMundial') IS NOT NULL DROP TABLE #PaisesMundial;
         CREATE TABLE #PaisesMundial (
             id_pais            CHAR(3) NOT NULL PRIMARY KEY,
@@ -62,7 +77,7 @@ BEGIN
             indice_inflacion   DECIMAL(5,2) NOT NULL
         );
 
-        -- 2. DICCIONARIO DE HOMOLOGACIÓN FIFA / ISO
+        -- 2. DICCIONARIO DE HOMOLOGACIÓN FIFA / ISO (48 Selecciones)
         IF OBJECT_ID('tempdb..#Homologacion') IS NOT NULL DROP TABLE #Homologacion;
         CREATE TABLE #Homologacion (
             id_pais_fifa  CHAR(3) PRIMARY KEY,
@@ -72,100 +87,95 @@ BEGIN
 
         INSERT INTO #Homologacion (id_pais_fifa, codigo_iso_bm, moneda_pais)
         VALUES
-            ('USA','USA','Dólar estadounidense'), ('MEX','MEX','Peso mexicano'), ('CAN','CAN','Dólar canadiense'),
-            ('ARG','ARG','Peso argentino'),        ('BRA','BRA','Real brasileño'), ('COL','COL','Peso colombiano'),
-            ('URU','URY','Peso uruguayo'),        ('ECU','ECU','Dólar estadounidense'), ('PAR','PRY','Guaraní'),
-            ('GER','DEU','Euro'),                 ('FRA','FRA','Euro'),           ('ESP','ESP','Euro'),
-            ('ENG','GBR','Libra esterlina'),      ('SCO','GBR','Libra esterlina'),('BEL','BEL','Euro'),
-            ('NED','NLD','Euro'),                 ('POR','PRT','Euro'),           ('CRO','HRV','Euro'),
-            ('SUI','CHE','Franco suizo'),         ('AUT','AUT','Euro'),           ('CZE','CZE','Corona checa'),
-            ('BIH','BIH','Marco convertible'),    ('NOR','NOR','Corona noruega'), ('SWE','SWE','Corona sueca'),
-            ('TUR','TUR','Lira turca'),           ('MAR','MAR','Dirham marroquí'),('SEN','SEN','Franco CFA'),
-            ('ALG','DZA','Dinar argelino'),       ('EGY','EGY','Libra egipcia'),  ('CIV','CIV','Franco CFA'),
-            ('TUN','TUN','Dinar tunecino'),       ('RSA','ZAF','Rand'),           ('COD','COD','Franco congoleño'),
-            ('CPV','CPV','Escudo caboverdiano'),  ('JPN','JPN','Yen'),            ('KOR','KOR','Won surcoreano'),
-            ('IRN','IRN','Rial iraní'),           ('AUS','AUS','Dólar australiano'),('KSA','SAU','Riyal saudí'),
-            ('QAT','QAT','Riyal catarí'),         ('IRQ','IRQ','Dinar iraquí'),   ('UZB','UZB','Som uzbeko'),
-            ('PAN','PAN','Balboa'),               ('CUW','CUW','Florín antillano'),('HAI','HTI','Gourde haitiano'),
-            ('GHA','GHA','Cedi ghanés'),          ('JOR','JOR','Dinar jordano'),  ('NZL','NZL','Dólar neozelandés');
+        ('USA','USA','Dólar estadounidense'), ('MEX','MEX','Peso mexicano'), ('CAN','CAN','Dólar canadiense'),
+        ('ARG','ARG','Peso argentino'),        ('BRA','BRA','Real brasileño'), ('COL','COL','Peso colombiano'),
+        ('URU','URY','Peso uruguayo'),        ('ECU','ECU','Dólar estadounidense'), ('PAR','PRY','Guaraní'),
+        ('GER','DEU','Euro'),                 ('FRA','FRA','Euro'),           ('ESP','ESP','Euro'),
+        ('ENG','GBR','Libra esterlina'),      ('SCO','GBR','Libra esterlina'),('BEL','BEL','Euro'),
+        ('NED','NLD','Euro'),                 ('POR','PRT','Euro'),           ('CRO','HRV','Euro'),
+        ('SUI','CHE','Franco suizo'),         ('AUT','AUT','Euro'),           ('CZE','CZE','Corona checa'),
+        ('BIH','BIH','Marco convertible'),    ('NOR','NOR','Corona noruega'), ('SWE','SWE','Corona sueca'),
+        ('TUR','TUR','Lira turca'),           ('MAR','MAR','Dirham marroquí'),('SEN','SEN','Franco CFA'),
+        ('ALG','DZA','Dinar argelino'),       ('EGY','EGY','Libra egipcia'),  ('CIV','CIV','Franco CFA'),
+        ('TUN','TUN','Dinar tunecino'),       ('RSA','ZAF','Rand'),           ('COD','COD','Franco congoleño'),
+        ('CPV','CPV','Escudo caboverdiano'),  ('JPN','JPN','Yen'),            ('KOR','KOR','Won surcoreano'),
+        ('IRN','IRN','Rial iraní'),           ('AUS','AUS','Dólar australiano'),('KSA','SAU','Riyal saudí'),
+        ('QAT','QAT','Riyal catarí'),         ('IRQ','IRQ','Dinar iraquí'),   ('UZB','UZB','Som uzbeko'),
+        ('PAN','PAN','Balboa'),               ('CUW','CUW','Florín antillano'),('HAI','HTI','Gourde haitiano'),
+        ('GHA','GHA','Cedi ghanés'),          ('JOR','JOR','Dinar jordano'),  ('NZL','NZL','Dólar neozelandés');
 
-        -- 3. LECTURA DEL CSV MEDIANTE BULK INSERT
-        IF @RutaCSV_Paises IS NOT NULL AND @RutaCSV_Paises <> ''
+        -- 3. LECTURA DINÁMICA DEL CSV MEDIANTE BULK INSERT
+        IF OBJECT_ID('tempdb..#Raw_CSV') IS NOT NULL DROP TABLE #Raw_CSV;
+        CREATE TABLE #Raw_CSV (
+            Linea NVARCHAR(MAX)
+        );
+
+        DECLARE @SQL_Bulk NVARCHAR(MAX) = N'
+        BULK INSERT #Raw_CSV
+        FROM ''' + REPLACE(@RutaCSV_Paises, '''', '''''') + N'''
+        WITH (
+            FIRSTROW = 5,
+            ROWTERMINATOR = ''\n'',
+            CODEPAGE = ''65001''
+        );';
+
+        BEGIN TRY
+            EXEC sys.sp_executesql @SQL_Bulk;
+            PRINT '--> [OK] CSV de países cargado correctamente en Staging.';
+        END TRY
+        BEGIN CATCH
+            SET @ErrLinea   = ERROR_LINE();
+            SET @ErrMensaje = 'Error al leer el CSV de países en ' + @RutaCSV_Paises + ': ' + ERROR_MESSAGE();
+            EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
+                @proceso_origen = @NombreProc,
+                @clave_registro = @RutaCSV_Paises,
+                @mensaje_error  = @ErrMensaje,
+                @linea_error    = @ErrLinea;
+            PRINT '--> [ADVERTENCIA]: Falla en lectura de archivo. Se activará modo contingencia.';
+        END CATCH;
+
+        -- 4. PARSEO Y FILTRADO DE LAS SELECCIONES (INDICADOR PBI: NY.GDP.PCAP.CD)
+        IF EXISTS (SELECT 1 FROM #Raw_CSV)
         BEGIN
-            IF OBJECT_ID('tempdb..#Raw_CSV') IS NOT NULL DROP TABLE #Raw_CSV;
-            CREATE TABLE #Raw_CSV (
-                Linea NVARCHAR(MAX)
-            );
+            ;WITH DatosCSV AS
+            (
+                SELECT
+                    REPLACE(SUBSTRING(Linea, 2, CHARINDEX('","', Linea) - 2), '"', '') AS NombrePaisCSV,
+                    REPLACE(SUBSTRING(Linea, CHARINDEX('","', Linea) + 3, 3), '"', '') AS CodigoISOCSV,
+                    TRY_CAST(LTRIM(RTRIM(REPLACE(REVERSE(SUBSTRING(REVERSE(Linea),
+                        CHARINDEX(',', REVERSE(Linea)) + 1,
+                        CHARINDEX(',', REVERSE(Linea), CHARINDEX(',', REVERSE(Linea)) + 1) - CHARINDEX(',', REVERSE(Linea)) - 1
+                    )), '"', ''))) AS DECIMAL(18,2)) AS Val2023CSV
+                FROM #Raw_CSV
+                WHERE Linea LIKE '%NY.GDP.PCAP.CD%'
+            )
+            INSERT INTO #PaisesMundial (
+                id_pais, nombre_pais, moneda_pais, pbi_per_capita_usd, poblacion_estimada, indice_inflacion
+            )
+            SELECT DISTINCT
+                H.id_pais_fifa,
+                CASE
+                    WHEN H.id_pais_fifa = 'ENG' THEN 'Inglaterra'
+                    WHEN H.id_pais_fifa = 'SCO' THEN 'Escocia'
+                    ELSE LEFT(D.NombrePaisCSV, 50)
+                END,
+                H.moneda_pais,
+                ISNULL(D.Val2023CSV, 15000.00),
+                ISNULL((SELECT TOP 1 poblacion_total FROM geografia.INDICADOR_ECONOMICO_PAIS I WHERE I.id_pais = H.id_pais_fifa AND I.periodo_anio = @PeriodoRef), 10000000),
+                ISNULL((SELECT TOP 1 indice_inflacion FROM geografia.INDICADOR_ECONOMICO_PAIS I WHERE I.id_pais = H.id_pais_fifa AND I.periodo_anio = @PeriodoRef), 5.00)
+            FROM DatosCSV D
+            INNER JOIN #Homologacion H ON D.CodigoISOCSV = H.codigo_iso_bm;
 
-            DECLARE @SQL_Bulk NVARCHAR(MAX) = N'
-                BULK INSERT #Raw_CSV
-                FROM ''' + REPLACE(@RutaCSV_Paises, '''', '''''') + N'''
-                WITH (
-                    FIRSTROW = 5,
-                    ROWTERMINATOR = ''\n'',
-                    CODEPAGE = ''65001''
-                );';
-
-            BEGIN TRY
-                EXEC sp_executesql @SQL_Bulk;
-                PRINT '--> CSV cargado correctamente.';
-            END TRY
-            BEGIN CATCH
-                SET @ErrLinea   = ERROR_LINE();
-                SET @ErrMensaje = 'Error al leer el CSV de países: ' + ERROR_MESSAGE();
-
-                EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
-                    @proceso_origen = @NombreProc,
-                    @clave_registro = @RutaCSV_Paises,
-                    @mensaje_error  = @ErrMensaje,
-                    @linea_error    = @ErrLinea;
-
-                PRINT '--> [ADVERTENCIA]: Falla al leer el archivo. Se activará el modo contingencia.';
-            END CATCH;
-
-            -- 4. PARSEO Y FILTRADO DE LAS SELECCIONES
-            IF EXISTS (SELECT 1 FROM #Raw_CSV)
-            BEGIN
-                ;WITH DatosCSV AS
-                (
-                    SELECT
-                        REPLACE(SUBSTRING(Linea, 2, CHARINDEX('","', Linea) - 2), '"', '') AS NombrePaisCSV,
-                        REPLACE(SUBSTRING(Linea, CHARINDEX('","', Linea) + 3, 3), '"', '') AS CodigoISOCSV,
-                        TRY_CAST(LTRIM(RTRIM(REPLACE(REVERSE(SUBSTRING(REVERSE(Linea),
-                            CHARINDEX(',', REVERSE(Linea)) + 1,
-                            CHARINDEX(',', REVERSE(Linea), CHARINDEX(',', REVERSE(Linea)) + 1) - CHARINDEX(',', REVERSE(Linea)) - 1
-                        )), '"', ''))) AS DECIMAL(18,2)) AS Val2023CSV
-                    FROM #Raw_CSV
-                    WHERE Linea LIKE '%NY.GDP.PCAP.CD%'
-                )
-                INSERT INTO #PaisesMundial (
-                    id_pais, nombre_pais, moneda_pais, pbi_per_capita_usd, poblacion_estimada, indice_inflacion
-                )
-                SELECT DISTINCT
-                    H.id_pais_fifa,
-                    CASE
-                        WHEN H.id_pais_fifa = 'ENG' THEN 'Inglaterra'
-                        WHEN H.id_pais_fifa = 'SCO' THEN 'Escocia'
-                        ELSE LEFT(D.NombrePaisCSV, 50)
-                    END,
-                    H.moneda_pais,
-                    ISNULL(D.Val2023CSV, 15000.00),
-                    ISNULL((SELECT TOP 1 poblacion_total FROM geografia.INDICADOR_ECONOMICO_PAIS I WHERE I.id_pais = H.id_pais_fifa AND I.periodo_anio = @PeriodoRef), 10000000),
-                    ISNULL((SELECT TOP 1 indice_inflacion FROM geografia.INDICADOR_ECONOMICO_PAIS I WHERE I.id_pais = H.id_pais_fifa AND I.periodo_anio = @PeriodoRef), 5.00)
-                FROM DatosCSV D
-                INNER JOIN #Homologacion H ON D.CodigoISOCSV = H.codigo_iso_bm;
-
-                PRINT '--> Homologación FIFA / ISO finalizada.';
-            END;
+            PRINT '--> [OK] Homologación FIFA / ISO finalizada exitosamente.';
         END;
 
-        -- 5. CONTINGENCIA: 10 PAÍSES DE PRUEBA SI NO HUBO CSV
+        -- 5. MODO CONTINGENCIA: SI EL CSV ESTÁ VACÍO O NO FUE LEGIBLE
         SELECT @CantPaisesTemporal = COUNT(*) FROM #PaisesMundial;
+
         IF @CantPaisesTemporal = 0
         BEGIN
             SET @OrigenDatos = 'CONTINGENCIA_TEST (10 PAISES)';
-            PRINT '--> CSV VACÍO O NO DISPONIBLE. CARGANDO 10 PAÍSES DE PRUEBA.';
-
+            PRINT '--> CSV VACÍO O INACCESIBLE. CARGANDO REGISTROS DE CONTINGENCIA.';
             INSERT INTO #PaisesMundial (id_pais, nombre_pais, moneda_pais, pbi_per_capita_usd, poblacion_estimada, indice_inflacion)
             SELECT V.id_pais, V.nombre_pais, H.moneda_pais, V.pbi, V.poblacion, V.inflacion
             FROM (
@@ -186,8 +196,8 @@ BEGIN
             SET @CantPaisesTemporal = 10;
         END;
 
-        -- 6. UPSERT MASIVO TRANSACCIONAL
-        PRINT '--> Ejecutando UPSERT de países e indicadores...';
+        -- 6. UPSERT TRANSACCIONAL EN geografia.PAIS E INDICADORES
+        PRINT '--> Ejecutando UPSERT de países e indicadores económicos...';
         BEGIN TRANSACTION;
 
         -- A. PAÍS (Actualizar existentes)
@@ -226,24 +236,22 @@ BEGIN
 
         COMMIT TRANSACTION;
 
-        -- Limpieza
+        -- Limpieza de recursos temporales
         IF OBJECT_ID('tempdb..#Raw_CSV') IS NOT NULL DROP TABLE #Raw_CSV;
         DROP TABLE #PaisesMundial;
         DROP TABLE #Homologacion;
 
-        PRINT '============================================================';
-        PRINT '  IMPORTACIÓN FINALIZADA CORRECTAMENTE                      ';
+        PRINT '  IMPORTACIÓN DE PAÍSES FINALIZADA CORRECTAMENTE                        ';
         PRINT '  ORIGEN: ' + @OrigenDatos;
         PRINT '  PAÍSES PROCESADOS: ' + CAST(@CantPaisesTemporal AS VARCHAR(10));
-        PRINT '============================================================';
 
     END TRY
     BEGIN CATCH
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        IF OBJECT_ID('tempdb..#Raw_CSV') IS NOT NULL DROP TABLE #Raw_CSV;
 
         SET @ErrLinea   = ERROR_LINE();
-        SET @ErrMensaje = 'Fallo en proceso de importación de países: ' + ERROR_MESSAGE();
+        SET @ErrMensaje = 'Fallo en importación de países: ' + ERROR_MESSAGE();
 
         EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
             @proceso_origen = @NombreProc,
@@ -257,11 +265,7 @@ BEGIN
 END;
 GO
 
-/*
-================================================================================
-                Consumo de API
-================================================================================
-*/
+-- 2. PROCEDIMIENTO: CONSUMO DE API REST DE TIPOS DE CAMBIO
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORT_HISTORIAL_TIPO_CAMBIO_API
     @UrlAPI          VARCHAR(500) = 'https://open.er-api.com/v6/latest/USD',
     @FechaCotizacion DATE         = NULL
@@ -282,10 +286,11 @@ BEGIN
     DECLARE @ErrMensaje   NVARCHAR(4000);
 
     BEGIN TRY
-   
-        PRINT '  INICIO CONSUMO DE API REST DE COTIZACIONES             ';
 
-        -- 1. CONSUMO DE API VIA HTTP
+        PRINT '  INICIO CONSUMO DE API REST DE COTIZACIONES                            ';
+        PRINT '  URL API: ' + @UrlAPI;
+
+        -- 1. CONSUMO DE API VIA HTTP (MSXML2.ServerXMLHTTP)
         EXEC @HResult = sp_OACreate 'MSXML2.ServerXMLHTTP', @Object OUT;
         IF @HResult <> 0
             THROW 50001, 'No se pudo crear el objeto OLE HTTP.', 1;
@@ -312,9 +317,9 @@ BEGIN
         IF @ResponseText IS NULL OR ISJSON(@ResponseText) <> 1
             THROW 50005, 'La respuesta recibida no posee un formato JSON válido.', 1;
 
-        PRINT '--> API REST consultada y validada correctamente.';
+        PRINT '--> [OK] API REST consultada y validada correctamente.';
 
-        -- 2. EXTRAER COTIZACIONES JSON CON OPENJSON (SET-BASED)
+        -- 2. EXTRAER COTIZACIONES JSON CON OPENJSON (rates)
         IF OBJECT_ID('tempdb..#CotizacionesAPI') IS NOT NULL DROP TABLE #CotizacionesAPI;
         SELECT
             [key] COLLATE DATABASE_DEFAULT AS codigo_moneda,
@@ -332,16 +337,16 @@ BEGIN
 
         INSERT INTO #MapaMonedas
         VALUES
-            ('USA','USD'), ('MEX','MXN'), ('CAN','CAD'), ('ARG','ARS'), ('BRA','BRL'), ('COL','COP'),
-            ('URU','UYU'), ('ECU','USD'), ('PAR','PYG'), ('GER','EUR'), ('FRA','EUR'), ('ESP','EUR'),
-            ('ENG','GBP'), ('SCO','GBP'), ('BEL','EUR'), ('NED','EUR'), ('POR','EUR'), ('CRO','EUR'),
-            ('SUI','CHF'), ('AUT','EUR'), ('CZE','CZK'), ('BIH','BAM'), ('NOR','NOK'), ('SWE','SEK'),
-            ('TUR','TRY'), ('MAR','MAD'), ('SEN','XOF'), ('ALG','DZD'), ('EGY','EGP'), ('CIV','XOF'),
-            ('TUN','TND'), ('RSA','ZAR'), ('COD','CDF'), ('CPV','CVE'), ('JPN','JPY'), ('KOR','KRW'),
-            ('IRN','IRR'), ('AUS','AUD'), ('KSA','SAR'), ('QAT','QAR'), ('IRQ','IQD'), ('UZB','UZS'),
-            ('PAN','PAB'), ('CUW','ANG'), ('HAI','HTG'), ('GHA','GHS'), ('JOR','JOD'), ('NZL','NZD');
+        ('USA','USD'), ('MEX','MXN'), ('CAN','CAD'), ('ARG','ARS'), ('BRA','BRL'), ('COL','COP'),
+        ('URU','UYU'), ('ECU','USD'), ('PAR','PYG'), ('GER','EUR'), ('FRA','EUR'), ('ESP','EUR'),
+        ('ENG','GBP'), ('SCO','GBP'), ('BEL','EUR'), ('NED','EUR'), ('POR','EUR'), ('CRO','EUR'),
+        ('SUI','CHF'), ('AUT','EUR'), ('CZE','CZK'), ('BIH','BAM'), ('NOR','NOK'), ('SWE','SEK'),
+        ('TUR','TRY'), ('MAR','MAD'), ('SEN','XOF'), ('ALG','DZD'), ('EGY','EGP'), ('CIV','XOF'),
+        ('TUN','TND'), ('RSA','ZAR'), ('COD','CDF'), ('CPV','CVE'), ('JPN','JPN'), ('KOR','KRW'),
+        ('IRN','IRR'), ('AUS','AUD'), ('KSA','SAR'), ('QAT','QAR'), ('IRQ','IQD'), ('UZB','UZS'),
+        ('PAN','PAB'), ('CUW','ANG'), ('HAI','HTG'), ('GHA','GHS'), ('JOR','JOD'), ('NZL','NZD');
 
-        -- 4. CRUZAR CON PAÍSES DE LA BASE
+        -- 4. CRUZAR CON PAÍSES EXISTENTES EN LA BASE
         IF OBJECT_ID('tempdb..#CotizacionesPais') IS NOT NULL DROP TABLE #CotizacionesPais;
         SELECT
             P.id_pais,
@@ -375,14 +380,13 @@ BEGIN
           );
 
         COMMIT TRANSACTION;
-        PRINT '--> Cotizaciones sincronizadas exitosamente.';
 
         -- Limpieza
         DROP TABLE #CotizacionesPais;
         DROP TABLE #MapaMonedas;
         DROP TABLE #CotizacionesAPI;
 
-        PRINT '  API DE COTIZACIONES PROCESADA CON ÉXITO                   ';
+        PRINT '  API DE COTIZACIONES PROCESADA CON ÉXITO                               ';
 
     END TRY
     BEGIN CATCH
@@ -391,14 +395,11 @@ BEGIN
             EXEC sp_OADestroy @Object;
             SET @Object = NULL;
         END;
-
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
 
         SET @ErrLinea   = ERROR_LINE();
         SET @ErrMensaje = 'Error en consumo o carga de API de cotizaciones: ' + ERROR_MESSAGE();
 
-        -- Registro centralizado de auditoría
         EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
             @proceso_origen = @NombreProc,
             @clave_registro = @UrlAPI,
