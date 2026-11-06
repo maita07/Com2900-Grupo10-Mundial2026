@@ -555,4 +555,4 @@ EXEC sys.sp_executesql
 END;
 GO
 
-EXEC torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML "C:\Users\Usuario\Desktop\uni\bdda\TP\Com2900-Grupo10-Mundial2026\Data\sedes_fixture.xml";
+EXEC torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML "C:\Mundial2026\Data\sedes_fixture.xml";
