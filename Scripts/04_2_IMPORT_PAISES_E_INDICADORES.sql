@@ -27,8 +27,14 @@ Descripcion:
 USE DB_Mundial2026_Grupo10;
 GO
 
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE WITH OVERRIDE;
+EXEC sp_configure 'Ole Automation Procedures', 1;
+RECONFIGURE WITH OVERRIDE;
+GO
+
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORTAR_PAISES_E_INDICADORES
-    @RutaPaisesCSV VARCHAR(500) = 'C:\Mundial2026\Data\paises.csv',
+    @RutaCSV_Paises VARCHAR(500) = 'C:\Mundial2026\Data\paises.csv',
     @RutaIndicadoresCSV VARCHAR(500) = 'C:\Mundial2026\Data\indicadores.csv'
 AS
 BEGIN
@@ -404,3 +410,11 @@ BEGIN
     END CATCH;
 END;
 GO
+
+
+EXEC geografia.sp_IMPORTAR_PAISES_E_INDICADORES
+EXEC geografia.sp_IMPORT_HISTORIAL_TIPO_CAMBIO_API
+
+SELECT * FROM geografia.PAIS
+SELECT * FROM geografia.INDICADOR_ECONOMICO_PAIS 
+SELECT * FROM geografia.HISTORIAL_TIPO_CAMBIO
