@@ -27,14 +27,9 @@ Descripcion:
 USE DB_Mundial2026_Grupo10;
 GO
 
-<<<<<<< HEAD
-CREATE OR ALTER PROCEDURE geografia.sp_IMPORT_PAISES_E_INDICADORES_CSV
-    @RutaCSV_Paises VARCHAR(500) = 'C:\Mundial2026\paises.csv'
-=======
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORTAR_PAISES_E_INDICADORES
     @RutaPaisesCSV VARCHAR(500) = 'C:\Mundial2026\Data\paises.csv',
     @RutaIndicadoresCSV VARCHAR(500) = 'C:\Mundial2026\Data\indicadores.csv'
->>>>>>> 665418da9c6cd6df095a61d772994afbea5e215c
 AS
 BEGIN
     SET NOCOUNT ON;
