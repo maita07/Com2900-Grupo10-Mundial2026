@@ -23,8 +23,8 @@ USE DB_Mundial2026_Grupo10;
 GO
 
 CREATE OR ALTER PROCEDURE persona.sp_IMPORTAR_ARBITROS
-    @RutaArchivoCSV     VARCHAR(500) = NULL,                -- Info de los arbitros
-    @RutaArchivoHTML    VARCHAR(500) = NULL,                -- HTML para deducir el rol
+    @RutaArchivoCSV     VARCHAR(500) = 'C:\Mundial2026\Data\arbitros.csv',                -- Info de los arbitros
+    @RutaArchivoHTML    VARCHAR(500) = 'C:\Mundial2026\Data\2026 FIFA World Cup officials - Wikipedia.html',                -- HTML para deducir el rol
     @IdRolPrincipal     INT          = 1,
     @IdRolAsistente     INT          = 2,
     @IdRolCuarto        INT          = 3,
@@ -289,3 +289,11 @@ BEGIN
     PRINT '             PROCESO DE IMPORTACIÓN FINALIZADO                          ';
 END;
 GO
+
+EXEC persona.sp_IMPORTAR_ARBITROS
+
+SELECT * FROM persona.ARBITRO
+SELECT * FROM torneo.ROL_ARBITRAL
+
+
+SELECT *  FROM auditoria.LOG_IMPORTACION

@@ -28,7 +28,7 @@ GO
 
 -- 1. IMPORTAR CONFEDERACIONES (XML)
 CREATE OR ALTER PROCEDURE geografia.sp_IMPORTAR_CONFEDERACIONES_XML
-    @XmlData XML
+    @RutaArchivo VARCHAR(500)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -42,8 +42,23 @@ BEGIN
 
     BEGIN TRY
         -- 1. VALIDACIÓN PREVIA DE ENTRADA
-        IF @XmlData IS NULL
-            THROW 50001, 'El parámetro XML de confederaciones no puede ser nulo.', 1;
+       IF @RutaArchivo IS NULL OR LTRIM(RTRIM(@RutaArchivo)) = ''
+        THROW 50020, 'La ruta del archivo XML no puede estar vacía.', 1;
+
+        DECLARE @XmlData XML;
+        DECLARE @SQL NVARCHAR(MAX);
+
+        SET @SQL = N'
+            SELECT @XML = CAST(BulkColumn AS XML)
+            FROM OPENROWSET(
+                BULK ''' + REPLACE(@RutaArchivo, '''', '''''') + N''',
+                SINGLE_BLOB
+            ) AS X;';
+
+        EXEC sys.sp_executesql
+            @SQL,
+            N'@XML XML OUTPUT',
+            @XML = @XmlData OUTPUT;
 
         -- 2. TABLA TEMPORAL DE PROCESAMIENTO
         DECLARE @Datos TABLE (
@@ -555,4 +570,4 @@ EXEC sys.sp_executesql
 END;
 GO
 
-EXEC torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML "C:\Users\Usuario\Desktop\uni\bdda\TP\Com2900-Grupo10-Mundial2026\Data\sedes_fixture.xml";
+

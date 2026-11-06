@@ -65,7 +65,7 @@ CREATE TABLE geografia.HISTORIAL_TIPO_CAMBIO (
 -- CONFEDERACION
 CREATE TABLE geografia.CONFEDERACION (
     id_confederacion INT NOT NULL,
-    nombre_confederacion VARCHAR(50) NOT NULL,
+    nombre_confederacion VARCHAR(100) NOT NULL,
     sigla VARCHAR(10) NOT NULL,
     CONSTRAINT PK_CONFEDERACION PRIMARY KEY (id_confederacion),
     CONSTRAINT UQ_CONFEDERACION_SIGLA UNIQUE (sigla)
