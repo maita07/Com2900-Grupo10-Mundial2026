@@ -452,7 +452,7 @@ BEGIN
         )
             THROW 50027, 'Regla violada: una selección no puede disputar un partido contra sí misma.', 1;
 
-        -- 5. UPSERT TRANSACCIONAL: SEDES
+               -- 5. UPSERT TRANSACCIONAL: SEDES
         BEGIN TRANSACTION;
 
         UPDATE D
@@ -472,26 +472,23 @@ BEGIN
             WHERE D.id_sede = O.id_sede
         );
 
-        -- 6. UPSERT TRANSACCIONAL: PARTIDOS
-        -- Actualizar partidos existentes manteniendo inalterados goles y asistencia
-        UPDATE D
-        SET D.id_sede                = P.id_sede,
-            D.id_seleccion_local     = SL.id_seleccion,
-            D.id_seleccion_visitante = SV.id_seleccion,
-            D.fecha_hora_utc         = P.fecha_hora_utc,
-            D.fecha_hora_local       = P.fecha_hora_local
-        FROM torneo.PARTIDO D
-        INNER JOIN #Partidos P ON D.id_fase = P.id_fase AND D.nro_partido_fase = P.nro_partido_fase
-        INNER JOIN torneo.SELECCION SL ON SL.id_pais = P.codigo_local
-        INNER JOIN torneo.SELECCION SV ON SV.id_pais = P.codigo_visitante;
-
-        -- Insertar partidos nuevos
+        -- 6. CARGA DE PARTIDOS DIRECTA Y LIMPIA DESDE CERO
         INSERT INTO torneo.PARTIDO (
-            id_fase, nro_partido_fase, id_sede, id_seleccion_local, id_seleccion_visitante,
-            fecha_hora_utc, fecha_hora_local, asistencia_oficial, goles_local, goles_visitante,
-            penales_local, penales_visitante, id_ganador_penales
+            id_fase, 
+            nro_partido_fase, 
+            id_sede, 
+            id_seleccion_local, 
+            id_seleccion_visitante,
+            fecha_hora_utc, 
+            fecha_hora_local, 
+            asistencia_oficial, 
+            goles_local, 
+            goles_visitante,
+            penales_local, 
+            penales_visitante, 
+            id_ganador_penales
         )
-        SELECT
+        SELECT 
             P.id_fase,
             P.nro_partido_fase,
             P.id_sede,
@@ -499,7 +496,8 @@ BEGIN
             SV.id_seleccion,
             P.fecha_hora_utc,
             P.fecha_hora_local,
-            0,
+            -- Asistencia directa de primera vez: entre el 92% y el 97% de la capacidad de la sede
+            CAST(S.capacidad * (0.92 + ((P.nro_partido_fase % 6) * 0.01)) AS INT),
             0,
             0,
             NULL,
@@ -508,6 +506,7 @@ BEGIN
         FROM #Partidos P
         INNER JOIN torneo.SELECCION SL ON SL.id_pais = P.codigo_local
         INNER JOIN torneo.SELECCION SV ON SV.id_pais = P.codigo_visitante
+        INNER JOIN #Sedes S            ON P.id_sede = S.id_sede
         WHERE NOT EXISTS (
             SELECT 1 FROM torneo.PARTIDO D 
             WHERE D.id_fase = P.id_fase AND D.nro_partido_fase = P.nro_partido_fase
