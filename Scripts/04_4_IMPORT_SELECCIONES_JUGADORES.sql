@@ -1,8 +1,6 @@
 /*
 ================================================================================
-UNLaM - Universidad Nacional de La Matanza
-Departamento de Ingeniería e Investigaciones Tecnológicas
-Materia: Base de Datos Aplicada (Comisión 5600)
+UNLaM - Base de Datos Aplicada (Comisión 5600)
 Entrega 6 - Script 04_4: Importación masiva de Selecciones, Jugadores y Plantillas
 2026 - 2C
 Grupo 10
@@ -14,22 +12,21 @@ Integrantes:
 - Maita Pitado Jose Gregorio: maita07
 
 Archivo: 04_4_IMPORT_SELECCIONES_JUGADORES.sql
-Descripcion: Módulo unificado de importación:
-  - torneo.sp_IMPORTAR_SELECCIONES_CSV: Carga y Upsert de Selecciones participantes.
-  - persona.sp_IMPORTAR_JUGADORES_CSV: Carga masiva de Jugadores y Convocatorias,
+Descripcion: 
+- Módulo unificado de importación con rutas parametrizadas:
+- torneo.sp_IMPORTAR_SELECCIONES_CSV: Carga y Upsert de Selecciones participantes.
+- persona.sp_IMPORTAR_JUGADORES_CSV: Carga masiva de Jugadores y Convocatorias,
    cálculo de peso por IMC (22.0), generación de documento único y registro oficial.
-  - Registro centralizado de auditoría: cualquier fallo de lectura o violación de
-  restricciones se persiste automáticamente en auditoria.LOG_IMPORTACION mediante el
-  procedimiento auditoria.sp_REGISTRAR_ERROR_IMPORTACION.
+- Rutas recibidas obligatoriamente por parámetro (sin rutas fijas ni defaults).
+- Auditoría centralizada de errores en auditoria.LOG_IMPORTACION.
 ================================================================================
 */
 USE DB_Mundial2026_Grupo10;
 GO
 
-
 -- 1. PROCEDIMIENTO: IMPORTACIÓN DE SELECCIONES (CSV)
 CREATE OR ALTER PROCEDURE torneo.sp_IMPORTAR_SELECCIONES_CSV
-    @RutaArchivo VARCHAR(500) = 'C:\Mundial2026\teams.csv'
+    @RutaArchivo VARCHAR(500) -- Parámetro obligatorio sin default
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -40,7 +37,19 @@ BEGIN
     DECLARE @ErrMensaje NVARCHAR(4000);
 
     PRINT '  INICIO IMPORTACIÓN DE SELECCIONES (CSV)                               ';
-    PRINT '  Archivo: ' + @RutaArchivo;
+    PRINT '  Archivo recibido por parámetro: ' + ISNULL(@RutaArchivo, 'NULL');
+
+    -- Validación previa del parámetro obligatorio
+    IF @RutaArchivo IS NULL OR LTRIM(RTRIM(@RutaArchivo)) = ''
+    BEGIN
+        SET @ErrMensaje = 'Debe indicar obligatoriamente la ruta del archivo CSV de selecciones (@RutaArchivo).';
+        EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
+            @proceso_origen = @NombreProc,
+            @clave_registro = 'PARAMETRO_NULL',
+            @mensaje_error  = @ErrMensaje,
+            @linea_error    = 1;
+        THROW 50010, @ErrMensaje, 1;
+    END;
 
     -- 1. Tabla temporal de Staging
     IF OBJECT_ID('tempdb..#Teams') IS NOT NULL DROP TABLE #Teams;
@@ -56,7 +65,7 @@ BEGIN
     );
 
     BEGIN TRY
-        -- 2. Bulk Insert con soporte para Unix (0x0a) y Windows (\r\n)
+        -- 2. Bulk Insert dinámico con soporte Unix (0x0a) y Windows (\r\n)
         DECLARE @SQL NVARCHAR(MAX) = N'
         BULK INSERT #Teams
         FROM ''' + REPLACE(@RutaArchivo, '''', '''''') + N'''
@@ -87,34 +96,32 @@ BEGIN
 
         -- 3. Validaciones de integridad
         IF NOT EXISTS (SELECT 1 FROM #Teams)
-            THROW 50010, 'El archivo CSV no contiene registros de selecciones.', 1;
+            THROW 50011, 'El archivo CSV no contiene registros de selecciones.', 1;
 
         IF EXISTS (
             SELECT 1 FROM #Teams
             WHERE team_id IS NULL OR team_name IS NULL OR fifa_code IS NULL
                OR group_letter IS NULL OR confederation IS NULL
         )
-            THROW 50011, 'El CSV contiene campos obligatorios vacíos o nulos.', 1;
+            THROW 50012, 'El CSV contiene campos obligatorios vacíos o nulos.', 1;
 
         IF EXISTS (SELECT team_id FROM #Teams GROUP BY team_id HAVING COUNT(*) > 1)
-            THROW 50012, 'Existen identificadores (team_id) duplicados en el archivo.', 1;
+            THROW 50013, 'Existen identificadores (team_id) duplicados en el archivo.', 1;
 
         IF EXISTS (SELECT fifa_code FROM #Teams GROUP BY fifa_code HAVING COUNT(*) > 1)
-            THROW 50013, 'Existen códigos FIFA duplicados en el archivo.', 1;
+            THROW 50014, 'Existen códigos FIFA duplicados en el archivo.', 1;
 
-        -- Validar existencia previa de Países y Confederaciones
         IF EXISTS (
             SELECT 1 FROM #Teams T
             LEFT JOIN geografia.PAIS P ON P.id_pais = UPPER(LTRIM(RTRIM(T.fifa_code)))
             LEFT JOIN geografia.CONFEDERACION C ON C.sigla = UPPER(LTRIM(RTRIM(T.confederation)))
             WHERE P.id_pais IS NULL OR C.id_confederacion IS NULL
         )
-            THROW 50014, 'Existen selecciones asociadas a países o confederaciones no registrados en la base.', 1;
+            THROW 50015, 'Existen selecciones asociadas a países o confederaciones no registrados en la base.', 1;
 
         -- 4. Upsert transaccional en torneo.SELECCION
         BEGIN TRANSACTION;
 
-        -- Actualizar selecciones existentes
         UPDATE S
         SET S.id_pais          = P.id_pais,
             S.id_confederacion = C.id_confederacion,
@@ -125,7 +132,6 @@ BEGIN
         INNER JOIN geografia.PAIS P ON P.id_pais = UPPER(LTRIM(RTRIM(T.fifa_code)))
         INNER JOIN geografia.CONFEDERACION C ON C.sigla = UPPER(LTRIM(RTRIM(T.confederation)));
 
-        -- Insertar selecciones nuevas
         INSERT INTO torneo.SELECCION (id_seleccion, id_confederacion, id_pais, nombre_seleccion, grupo_asignado)
         SELECT 
             T.team_id,
@@ -162,14 +168,15 @@ BEGIN
             @linea_error    = @ErrLinea;
 
         PRINT '--> ERROR REGISTRADO EN AUDITORÍA: ' + @ErrMensaje;
-        THROW 50015, @ErrMensaje, 1;
+        THROW 50016, @ErrMensaje, 1;
     END CATCH;
 END;
 GO
 
+
 -- 2. PROCEDIMIENTO: IMPORTACIÓN DE JUGADORES Y PLANTILLAS (CSV)
 CREATE OR ALTER PROCEDURE persona.sp_IMPORTAR_JUGADORES_CSV
-    @RutaCSV VARCHAR(500) = 'C:\Mundial2026\SquadLists.csv'
+    @RutaCSV VARCHAR(500) -- Parámetro obligatorio sin default
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -180,7 +187,19 @@ BEGIN
     DECLARE @ErrMensaje NVARCHAR(4000);
 
     PRINT '  INICIO IMPORTACIÓN DE JUGADORES Y CONVOCATORIAS OFICIALES            ';
-    PRINT '  Origen de datos: ' + @RutaCSV;
+    PRINT '  Archivo recibido por parámetro: ' + ISNULL(@RutaCSV, 'NULL');
+ 
+    -- Validación previa del parámetro obligatorio
+    IF @RutaCSV IS NULL OR LTRIM(RTRIM(@RutaCSV)) = ''
+    BEGIN
+        SET @ErrMensaje = 'Debe indicar obligatoriamente la ruta del archivo CSV de jugadores (@RutaCSV).';
+        EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
+            @proceso_origen = @NombreProc,
+            @clave_registro = 'PARAMETRO_NULL',
+            @mensaje_error  = @ErrMensaje,
+            @linea_error    = 1;
+        THROW 50001, @ErrMensaje, 1;
+    END;
 
     -- 1. Staging Temporal
     IF OBJECT_ID('tempdb..#STG_JUGADORES') IS NOT NULL DROP TABLE #STG_JUGADORES;
@@ -200,7 +219,7 @@ BEGIN
         Goals          NVARCHAR(50)
     );
 
-    -- 2. Bulk Insert con fallback de formato
+    -- 2. Bulk Insert dinámico con fallback de formato
     DECLARE @SQL NVARCHAR(MAX) = N'
     BULK INSERT #STG_JUGADORES
     FROM ''' + REPLACE(@RutaCSV, '''', '''''') + N'''
@@ -234,17 +253,17 @@ BEGIN
         END TRY
         BEGIN CATCH
             SET @ErrLinea   = ERROR_LINE();
-            SET @ErrMensaje = 'Fallo en lectura de archivo CSV: ' + ERROR_MESSAGE();
+            SET @ErrMensaje = 'Fallo en lectura de archivo CSV en ' + @RutaCSV + ': ' + ERROR_MESSAGE();
             EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
                 @proceso_origen = @NombreProc,
                 @clave_registro = @RutaCSV,
                 @mensaje_error  = @ErrMensaje,
                 @linea_error    = @ErrLinea;
-            THROW 50001, @ErrMensaje, 1;
+            THROW 50002, @ErrMensaje, 1;
         END CATCH;
     END CATCH;
 
-    -- 3. Normalización de Selecciones
+    -- 3. Normalización y Homologación de Selecciones
     IF OBJECT_ID('tempdb..#JUGADORES_VALIDOS') IS NOT NULL DROP TABLE #JUGADORES_VALIDOS;
     CREATE TABLE #JUGADORES_VALIDOS (
         Team             VARCHAR(100),
@@ -299,7 +318,7 @@ BEGIN
             @clave_registro = @RutaCSV,
             @mensaje_error  = @ErrMensaje,
             @linea_error    = @ErrLinea;
-        THROW 50002, @ErrMensaje, 1;
+        THROW 50003, @ErrMensaje, 1;
     END;
 
     IF EXISTS (
@@ -314,10 +333,10 @@ BEGIN
             @clave_registro = @RutaCSV,
             @mensaje_error  = @ErrMensaje,
             @linea_error    = @ErrLinea;
-        THROW 50003, @ErrMensaje, 1;
+        THROW 50004, @ErrMensaje, 1;
     END;
 
-    -- 5. Tabla mapeada con DNI secuencial y Peso calculado por IMC
+    -- 5. Mapeo con DNI secuencial y Peso calculado por IMC (22.0)
     IF OBJECT_ID('tempdb..#MAPA_JUGADORES') IS NOT NULL DROP TABLE #MAPA_JUGADORES;
     CREATE TABLE #MAPA_JUGADORES (
         id_seleccion    INT,
@@ -364,10 +383,10 @@ BEGIN
     BEGIN TRY
         -- A. Superclase PERSONA
         UPDATE P
-        SET P.nombre              = M.Nombres,
-            P.apellido            = M.Apellidos,
-            P.fecha_nacimiento    = M.FechaNacimiento,
-            P.id_nacionalidad_pais= M.Team_Code
+        SET P.nombre               = M.Nombres,
+            P.apellido             = M.Apellidos,
+            P.fecha_nacimiento     = M.FechaNacimiento,
+            P.id_nacionalidad_pais = M.Team_Code
         FROM persona.PERSONA P
         INNER JOIN #MAPA_JUGADORES M 
             ON P.tipo_doc = M.tipo_doc AND P.nro_doc = M.nro_doc;
@@ -419,9 +438,9 @@ BEGIN
 
         -- C. Convocatorias Oficiales
         UPDATE C
-        SET C.tipo_doc             = M.tipo_doc,
-            C.nro_doc              = M.nro_doc,
-            C.estado_convocatoria  = 'ACTIVO'
+        SET C.tipo_doc            = M.tipo_doc,
+            C.nro_doc             = M.nro_doc,
+            C.estado_convocatoria = 'ACTIVO'
         FROM torneo.CONVOCATORIA C
         INNER JOIN #MAPA_JUGADORES M 
             ON C.id_seleccion = M.id_seleccion AND C.dorsal_oficial = M.Dorsal;
@@ -448,7 +467,7 @@ BEGIN
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
 
         SET @ErrLinea   = ERROR_LINE();
-        SET @ErrMensaje = 'Fallo en la transacción de carga: ' + ERROR_MESSAGE();
+        SET @ErrMensaje = 'Fallo en la transacción de carga de jugadores: ' + ERROR_MESSAGE();
 
         EXEC auditoria.sp_REGISTRAR_ERROR_IMPORTACION
             @proceso_origen = @NombreProc,
@@ -456,7 +475,7 @@ BEGIN
             @mensaje_error  = @ErrMensaje,
             @linea_error    = @ErrLinea;
 
-        THROW 50004, @ErrMensaje, 1;
+        THROW 50005, @ErrMensaje, 1;
     END CATCH;
 
     -- Limpieza de recursos temporales
@@ -464,7 +483,7 @@ BEGIN
     DROP TABLE #JUGADORES_VALIDOS;
     DROP TABLE #MAPA_JUGADORES;
 
-    PRINT '  FIN PROCESO DE IMPORTACION  EXITOSAMENTE                        ';
+    PRINT '  PROCESO DE IMPORTACIÓN FINALIZADO EXITOSAMENTE                        ';
 
 END;
 GO
