@@ -550,17 +550,37 @@ SET NOCOUNT ON;
             SET @ErroresAcumulados += '- El rol arbitral es obligatorio.' + CHAR(13);
         ELSE IF NOT EXISTS (SELECT id_rol FROM torneo.ROL_ARBITRAL WHERE id_rol = @id_rol)
             SET @ErroresAcumulados += '- El rol arbitral especificado no existe.' + CHAR(13);
+        
+        IF EXISTS (
+            SELECT 1
+            FROM torneo.PARTIDO P
+            INNER JOIN torneo.SELECCION S ON S.id_seleccion IN (P.id_seleccion_local, P.id_seleccion_visitante)
+            INNER JOIN persona.PERSONA PE ON PE.id_nacionalidad_pais = S.id_pais
+            WHERE P.id_fase = @id_fase AND P.nro_partido_fase = @nro_partido_fase
+              AND PE.nro_doc = TRIM(@nro_doc) AND PE.tipo_doc = UPPER(TRIM(@tipo_doc))
+        )
+            SET @ErroresAcumulados += '- Conflicto de nacionalidad: el árbitro es del mismo país que una de las selecciones del partido.' + CHAR(13);
     END;
  
-    -- Control Errores Acumulados
-    IF LEN(@ErroresAcumulados) > 0
+    -- Control Errores Acumulados   
+     IF LEN(@ErroresAcumulados) > 0
     BEGIN
         SET @ErroresAcumulados = 'Se encontraron los siguientes errores de validación:'
                                  + CHAR(13) + @ErroresAcumulados;
         THROW 50000, @ErroresAcumulados, 1;
         RETURN;
     END;
- 
+
+    IF @Accion IN ('A', 'M') AND @id_fase >= 2 AND EXISTS (
+        SELECT 1
+        FROM persona.PERSONA PE
+        INNER JOIN torneo.SELECCION S ON S.id_pais = PE.id_nacionalidad_pais
+        INNER JOIN torneo.PARTIDO P2  ON P2.id_fase = @id_fase
+                                     AND S.id_seleccion IN (P2.id_seleccion_local, P2.id_seleccion_visitante)
+        WHERE PE.nro_doc = TRIM(@nro_doc) AND PE.tipo_doc = UPPER(TRIM(@tipo_doc))
+    )
+        PRINT CONCAT('ADVERTENCIA (partido ', @nro_partido_fase, '): el país del árbitro sigue en el torneo y podría cruzarse con el ganador de este partido.');
+
     BEGIN TRY
         BEGIN TRANSACTION;
  
