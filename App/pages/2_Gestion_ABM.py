@@ -31,7 +31,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Logo institucional arriba (si existe en assets)
-    ruta_logo = os.path.join(os.path.dirname(__file__), "assets", "logo_mundial2026_unlam.png")
+    ruta_logo = os.path.join(os.path.dirname(__file__),"..", "assets", "logo_mundial2026_unlam.png")
     if os.path.exists(ruta_logo):
         st.image(ruta_logo, use_container_width=True)
 
@@ -52,7 +52,7 @@ with st.sidebar:
 
 # Función para aplicar la imagen de fondo con estética del banner
 def aplicar_fondo_personalizado():
-    ruta_fondo = os.path.join(os.path.dirname(__file__), "assets", "fondo_mundial2026.png")
+    ruta_fondo = os.path.join(os.path.dirname(__file__),"..", "assets", "fondo_mundial2026.png")
     
     if os.path.exists(ruta_fondo):
         # Convertimos la imagen local a base64
@@ -118,7 +118,7 @@ def aplicar_fondo_personalizado():
 aplicar_fondo_personalizado()
 
 # importar módulos desde la subcarpeta src/
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),"..", 'src')))
 
 try:
     from conexion import obtener_conexion

@@ -31,7 +31,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # Logo institucional arriba (si existe en assets)
-    ruta_logo = os.path.join(os.path.dirname(__file__), "assets", "logo_mundial2026_unlam.png")
+    ruta_logo = os.path.join(os.path.dirname(__file__),"..", "assets", "logo_mundial2026_unlam.png")
     if os.path.exists(ruta_logo):
         st.image(ruta_logo, use_container_width=True)
 
@@ -52,7 +52,7 @@ with st.sidebar:
 
 # Función para aplicar la imagen de fondo con estética del banner
 def aplicar_fondo_personalizado():
-    ruta_fondo = os.path.join(os.path.dirname(__file__), "assets", "fondo_mundial2026.png")
+    ruta_fondo = os.path.join(os.path.dirname(__file__),"..", "assets", "fondo_mundial2026.png")
     
     if os.path.exists(ruta_fondo):
         # Convertimos la imagen local a base64
@@ -118,7 +118,7 @@ def aplicar_fondo_personalizado():
 aplicar_fondo_personalizado()
 
 # importar módulos desde la subcarpeta src/
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),"..", 'src')))
 
 try:
     from conexion import obtener_conexion
@@ -144,43 +144,107 @@ with col_titulo:
    
 
 st.write("---")
+st.title("📥 Centro de Importación Masiva (Entrega 6)")
+st.write("Seleccione el proceso que desea ejecutar para sincronizar los datos en SQL Server:")
 
-st.markdown("""
-#### 📥 1. Importación Masiva (Entrega 6)
-* **Carga de Datos:** Selecciones (`CSV`), Planteles (`CSV`), Sedes y Fixture (`XML`), y Países (`CSV`).
-* **Lógica Upsert:** Validación de integridad y prevención de duplicados.
-* **Auditoría en Vivo:** Visualización directa de errores y advertencias en `auditoria.LOG_IMPORTACION`.
-""")
-
-
-
-st.write("---")
-
-# Estado del Servidor y Base de Datos 
-st.markdown("### 🔌 Estado de Conexión al Motor de Base de Datos")
-
-if CONEXION_DISPONIBLE:
-    try:
-        conn = obtener_conexion()
-        cursor = conn.cursor()
-        cursor.execute("SELECT @@SERVERNAME, DB_NAME(), GETDATE();")
-        servidor, base_datos, fecha_hora = cursor.fetchone()
-        conn.close()
-
-        col_st1, col_st2, col_st3 = st.columns(3)
-        with col_st1:
-            st.success(f"🟢 **Servidor Conectado:**\n`{servidor}`")
-        with col_st2:
-            st.info(f"🗄️ **Base de Datos:**\n`{base_datos}`")
-        with col_st3:
-            st.metric(label="Hora del Servidor SQL", value=fecha_hora.strftime("%H:%M:%S"))
-    except Exception as e:
-        st.error(f"🔴 **Error de Conexión a SQL Server:** No se pudo enlazar con la base.\n\n*Detalle técnico:* `{e}`")
-        st.warning("Verifique que el servicio de SQL Server esté iniciado y que `src/conexion.py` tenga el servidor correcto.")
-else:
-    st.warning("⚠️ No se encontró el archivo `src/conexion.py`.")
+opciones_sp = [
+    "1. Países e Indicadores Económicos (.csv)",
+    "2. Sedes y Fixture Oficial (.xml)",
+    "3. Árbitros y Designaciones (CSV + HTML)"
+]
+proceso_elegido = st.selectbox("📂 Proceso de Importación:", opciones_sp)
 
 st.write("---")
+
+
+# FORMULARIO DINÁMICO SEGÚN EL DATASET ELEGIDO
+if proceso_elegido.startswith("1. Países"):
+    sp_a_ejecutar = "geografia.sp_IMPORTAR_PAISES_E_INDICADORES"
+    st.info("ℹ️ Carga el catálogo de países. Los indicadores economicos se consumen desde la API del Banco Mundial.")
+    tipo_archivo = "csv"
+    archivo = st.file_uploader("Arrastrá el archivo `paises.csv`:", type=["csv"], key="upl_paises")
+    ruta_manual = st.text_input("O ingresá la ruta completa en disco:", value=r"C:\Mundial2026\Data\paises.csv", key="txt_paises")
+
+elif proceso_elegido.startswith("2. Sedes"):
+    sp_a_ejecutar = "torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML"
+    st.info("ℹ️ Carga Confederaciones, Sedes y Fixture Oficial desde XML.")
+    tipo_archivo = "xml"
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        archivo_confederacion = st.file_uploader("Arrastrá `confederaciones.xml`:", type=["xml"], key="upl_conf")
+        ruta_confederacion = st.text_input("O ingresá la ruta completa en disco:", value=r"C:\Mundial2026\confederaciones.xml", key="txt_conf")
+
+    with col2:
+        archivo_sedes_fixture = st.file_uploader("Arrastrá `SedesYFixture.xml`:", type=["xml"], key="upl_sedes")
+        ruta_sedes_fixture = st.text_input("O ingresá la ruta completa en disco:", value=r"C:\Mundial2026\SedesYFixture.xml", key="txt_sedes")
+
+elif proceso_elegido.startswith("3. Árbitros"):
+    sp_a_ejecutar = "persona.sp_IMPORTAR_ARBITROS"
+    st.info("ℹ️ Sincroniza el cuerpo arbitral y sus designaciones combinando el catálogo de Wikidata (CSV) con el fixture de Wikipedia (HTML).")
+    
+    col_a1, col_a2 = st.columns(2)
+    with col_a1:
+        archivo_arbitros_csv = st.file_uploader(
+            "Arrastrá `arbitros.csv` (Wikidata):", 
+            type=["csv"], 
+            key="upl_arb_csv"
+        )
+        ruta_arbitros_csv = st.text_input(
+            "Ruta CSV en disco:", 
+            value=r"C:\Mundial2026\Data\arbitros.csv", 
+            key="txt_arb_csv"
+        )
+        
+    with col_a2:
+        archivo_arbitros_html = st.file_uploader(
+            "Arrastrá `arbitros.html` (Wikipedia):", 
+            type=["html", "htm"], 
+            key="upl_arb_html"
+        )
+        ruta_arbitros_html = st.text_input(
+            "Ruta HTML en disco:", 
+            value=r"C:\Mundial2026\Data\arbitros.html", 
+            key="txt_arb_html"
+        )
+    
+
+# VISOR DE AUDITORÍA EN TIEMPO REAL (auditoria.LOG_IMPORTACION)
+st.write("---")
+col_tit, col_btn = st.columns([12, 14])
+with col_tit:
+    st.subheader("📋 Registro de Control y Auditoría (`auditoria.LOG_IMPORTACION`)")
+with col_btn:
+    if st.button("🔄 Actualizar Auditoría", use_container_width=True):
+        st.rerun()
+
+try:
+    conn = obtener_conexion()
+    query_auditoria = """
+        SELECT TOP 25
+            id_log AS [ID],
+            fecha_hora AS [Fecha / Hora],
+            proceso_origen AS [Procedimiento Origen],
+            nro_fila AS [Fila],
+            clave_registro AS [Clave / Detalle],
+            mensaje_error AS [Descripción del Error],
+            linea_error AS [Línea T-SQL]
+        FROM auditoria.LOG_IMPORTACION
+        ORDER BY id_log DESC;
+    """
+    df_auditoria = pd.read_sql(query_auditoria, conn)
+    conn.close()
+
+    if df_auditoria.empty:
+        st.success("🟢 No hay errores registrados en la auditoría. Todas las cargas fueron limpias.")
+    else:
+        st.dataframe(df_auditoria, use_container_width=True, hide_index=True)
+except Exception as e:
+    st.warning(f"⚠️ No se pudo consultar la tabla de auditoría: `{e}`")
+
+
+
+
 
 # Pie de Página Institucional
 
