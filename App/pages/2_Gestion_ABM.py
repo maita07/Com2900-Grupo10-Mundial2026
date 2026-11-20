@@ -144,10 +144,34 @@ with col_titulo:
    
 
 st.write("---")
+
 st.markdown("""
-#### Gestion ABM 
-* ** ......
+#### Gestion ABM de Sedes
 """)
+
+accion = st.radio("Operación", ["Alta", "Modificación", "Baja"])
+id_sede = st.number_input("ID de sede", step=1)
+id_pais = st.text_input("Código de pais (ej: ARG)")
+nombre = st.text_input("Nombre del estadio")
+ciudad = st.text_input("Ciudad")
+capacidad = st.number_input("Capacidad", step=1)
+huso = st.text_input("Huso horario UTC (ej: UTC-3)")
+
+if st.button("Confirmar"):
+    conn = obtener_conexion()
+    conn.autocommit = True
+    try:
+        conn.execute("EXEC torneo.sp_SEDE_ABM @Accion = ?, @id_sede = ?, @id_pais = ?, @nombre_estadio = ?, @ciudad = ?, @capacidad = ?, @huso_horario_utc = ?",
+                     accion[0], id_sede, id_pais, nombre, ciudad, capacidad, huso)
+        st.success("Operación realizada correctamente.")
+    except pyodbc.Error as e:
+        st.error(e.args[1])
+    conn.close()
+
+st.markdown("##### Sedes registradas")
+conn = obtener_conexion()
+st.dataframe(pd.read_sql("SELECT * FROM torneo.SEDE ORDER BY id_sede", conn))
+conn.close()
 
 st.write("---")
 
