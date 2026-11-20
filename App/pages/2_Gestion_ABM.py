@@ -170,7 +170,7 @@ if st.button("Confirmar"):
 
 st.markdown("##### Sedes registradas")
 conn = obtener_conexion()
-st.dataframe(pd.read_sql("SELECT * FROM torneo.SEDE ORDER BY id_sede", conn))
+st.table(conn.execute("SELECT * FROM torneo.SEDE ORDER BY id_sede").fetchall())
 conn.close()
 
 st.write("---")
