@@ -1,0 +1,60 @@
+nro_doc,tipo_doc,id_nacionalidad_pais,nombre,apellido,entrenadorLabel,fecha_nacimiento,codigo_pais_seleccion,seleccionLabel,cargo_tecnico
+AS1001,PASAPORTE,MEX,Rafael,Márquez,Rafael Márquez,1979-02-13,MEX,Mexico,Asistente Técnico
+AS1002,PASAPORTE,ESP,Toni,Amor,Toni Amor,1976-08-19,MEX,Mexico,Asistente Técnico
+AS1003,PASAPORTE,RSA,Helman,Mkhalele,Helman Mkhalele,1969-10-20,RSA,South Africa,Asistente Técnico
+AS1004,PASAPORTE,KOR,Joao,Arodo,Joao Arodo,1977-05-11,KOR,South Korea,Asistente Técnico
+AS1005,PASAPORTE,KOR,Kim,Dong-jin,Kim Dong-jin,1982-01-29,KOR,South Korea,Asistente Técnico
+AS1006,PASAPORTE,CZE,Jaroslav,Köstl,Jaroslav Köstl,1990-02-17,CZE,Czechia,Asistente Técnico
+AS1007,PASAPORTE,CAN,Mauro,Biello,Mauro Biello,1972-08-08,CAN,Canada,Asistente Técnico
+AS1008,PASAPORTE,BIH,Zlatan,Bajramović,Zlatan Bajramović,1979-08-12,BIH,Bosnia and Herzegovina,Asistente Técnico
+AS1009,PASAPORTE,ESP,Pablo,Sanz,Pablo Sanz,1973-08-30,QAT,Qatar,Asistente Técnico
+AS1010,PASAPORTE,SUI,Giorgio,Contini,Giorgio Contini,1974-01-04,SUI,Switzerland,Asistente Técnico
+AS1011,PASAPORTE,ITA,Davide,Ancelotti,Davide Ancelotti,1989-07-22,BRA,Brazil,Asistente Técnico
+AS1012,PASAPORTE,BRA,Cláudio,Taffarel,Cláudio Taffarel,1966-05-08,BRA,Brazil,Entrenador de Arqueros
+AS1013,PASAPORTE,MAR,Rachid,Benmahmoud,Rachid Benmahmoud,1971-09-14,MAR,Morocco,Asistente Técnico
+AS1014,PASAPORTE,HAI,Jean-Jacques,Pierre,Jean-Jacques Pierre,1981-01-23,HAI,Haiti,Asistente Técnico
+AS1015,PASAPORTE,SCO,John,Carver,John Carver,1965-01-16,SCO,Scotland,Asistente Técnico
+AS1016,PASAPORTE,ESP,Jesús,Pérez,Jesús Pérez,1971-09-21,USA,USA,Asistente Técnico
+AS1017,PASAPORTE,ARG,Miguel,D'Agostino,Miguel D'Agostino,1972-01-01,USA,USA,Asistente Técnico
+AS1018,PASAPORTE,ARG,Carlos,González,Carlos González,1966-04-12,PAR,Paraguay,Asistente Técnico
+AS1019,PASAPORTE,AUS,Paul,Okon,Paul Okon,1972-04-05,AUS,Australia,Asistente Técnico
+AS1020,PASAPORTE,ITA,Daniele,Russo,Daniele Russo,1973-07-03,TUR,Türkiye,Asistente Técnico
+AS1021,PASAPORTE,GER,Sandro,Wagner,Sandro Wagner,1987-11-29,GER,Germany,Asistente Técnico
+AS1022,PASAPORTE,GER,Benjamin,Glück,Benjamin Glück,1986-04-21,GER,Germany,Asistente Técnico
+AS1023,PASAPORTE,NED,Cor,Pot,Cor Pot,1951-06-08,CUW,Curaçao,Asistente Técnico
+AS1024,PASAPORTE,CIV,Guy,Demel,Guy Demel,1981-06-13,CIV,Côte d'Ivoire,Asistente Técnico
+AS1025,PASAPORTE,ARG,Guillermo,Marino,Guillermo Marino,1981-02-02,ECU,Ecuador,Asistente Técnico
+AS1026,PASAPORTE,NED,Erwin,Koeman,Erwin Koeman,1961-09-20,NED,Netherlands,Asistente Técnico
+AS1027,PASAPORTE,JPN,Hiroshi,Nanami,Hiroshi Nanami,1972-11-28,JPN,Japan,Asistente Técnico
+AS1028,PASAPORTE,NED,Remy,Reijnierse,Remy Reijnierse,1961-06-18,SWE,Sweden,Asistente Técnico
+AS1029,PASAPORTE,FRA,Laurent,Bonadéi,Laurent Bonadéi,1969-11-03,TUN,Tunisia,Asistente Técnico
+AS1030,PASAPORTE,GER,Andreas,Hinkel,Andreas Hinkel,1982-03-26,BEL,Belgium,Asistente Técnico
+AS1031,PASAPORTE,EGY,Tarek,Soliman,Tarek Soliman,1962-01-24,EGY,Egypt,Asistente Técnico
+AS1032,PASAPORTE,IRN,Andranik,Teymourian,Andranik Teymourian,1983-03-06,IRN,IR Iran,Asistente Técnico
+AS1033,PASAPORTE,NZL,Paul,Temple,Paul Temple,1981-04-15,NZL,New Zealand,Asistente Técnico
+AS1034,PASAPORTE,ESP,Pablo,Amo,Pablo Amo,1978-01-15,ESP,Spain,Asistente Técnico
+AS1035,PASAPORTE,CPV,Humberto,Bettencourt,Humberto Bettencourt,1976-06-04,CPV,Cabo Verde,Asistente Técnico
+AS1036,PASAPORTE,GRE,Makis,Angelinis,Makis Angelinis,1972-03-19,KSA,Saudi Arabia,Asistente Técnico
+AS1037,PASAPORTE,ARG,Pablo,Quiroga,Pablo Quiroga,1982-08-11,URU,Uruguay,Asistente Técnico
+AS1038,PASAPORTE,FRA,Guy,Stéphan,Guy Stéphan,1956-10-17,FRA,France,Asistente Técnico
+AS1039,PASAPORTE,FRA,Franck,Raviot,Franck Raviot,1973-07-12,FRA,France,Entrenador de Arqueros
+AS1040,PASAPORTE,SEN,Teddy,Pellerin,Teddy Pellerin,1980-05-22,SEN,Senegal,Asistente Técnico
+AS1041,PASAPORTE,AUS,Rene,Meulensteen,Rene Meulensteen,1964-03-25,IRQ,Iraq,Asistente Técnico
+AS1042,PASAPORTE,NOR,Kent,Bergersen,Kent Bergersen,1967-02-08,NOR,Norway,Asistente Técnico
+AS1043,PASAPORTE,ARG,Pablo,Aimar,Pablo Aimar,1979-11-03,ARG,Argentina,Asistente Técnico
+AS1044,PASAPORTE,ARG,Roberto,Ayala,Roberto Ayala,1973-04-14,ARG,Argentina,Asistente Técnico
+AS1045,PASAPORTE,ARG,Martín,Tocalli,Martín Tocalli,1973-09-25,ARG,Argentina,Entrenador de Arqueros
+AS1046,PASAPORTE,ALG,Nabil,Neghiz,Nabil Neghiz,1967-09-25,ALG,Algeria,Asistente Técnico
+AS1047,PASAPORTE,AUT,Lars,Kornetka,Lars Kornetka,1978-03-15,AUT,Austria,Asistente Técnico
+AS1048,PASAPORTE,MAR,Mustapha,Khalfi,Mustapha Khalfi,1975-06-12,JOR,Jordan,Asistente Técnico
+AS1049,PASAPORTE,ESP,Jesús,Seba,Jesús Seba,1974-04-11,POR,Portugal,Asistente Técnico
+AS1050,PASAPORTE,POR,Ricardo,Pereira,Ricardo Pereira,1976-02-11,POR,Portugal,Entrenador de Arqueros
+AS1051,PASAPORTE,FRA,Rafael,Hamidi,Rafael Hamidi,1978-11-10,COD,Congo DR,Asistente Técnico
+AS1052,PASAPORTE,ITA,Paolo,Cannavaro,Paolo Cannavaro,1981-06-26,UZB,Uzbekistan,Asistente Técnico
+AS1053,PASAPORTE,COL,Luis,Perea,Luis Perea,1979-01-30,COL,Colombia,Asistente Técnico
+AS1054,PASAPORTE,ENG,Anthony,Barry,Anthony Barry,1986-05-29,ENG,England,Asistente Técnico
+AS1055,PASAPORTE,POR,Henrique,Hilário,Henrique Hilário,1975-10-21,ENG,England,Entrenador de Arqueros
+AS1056,PASAPORTE,CRO,Ivica,Olić,Ivica Olić,1979-09-14,CRO,Croatia,Asistente Técnico
+AS1057,PASAPORTE,CRO,Vedran,Ćorluka,Vedran Ćorluka,1986-02-05,CRO,Croatia,Asistente Técnico
+AS1058,PASAPORTE,GHA,John,Paintsil,John Paintsil,1981-06-15,GHA,Ghana,Asistente Técnico
+AS1059,PASAPORTE,ESP,Javier,Sánchez,Javier Sánchez,1974-07-08,PAN,Panama,Asistente Técnico

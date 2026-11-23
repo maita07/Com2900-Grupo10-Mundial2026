@@ -19,8 +19,8 @@ Descripcion:
   1. persona.sp_IMPORTAR_CUERPO_TECNICO_CSV: Importación desde archivo CSV o JSON
      descargado de Wikidata Query Service (parámetro @RutaArchivo).
   2. persona.sp_IMPORTAR_CUERPO_TECNICO_API: Consumo directo de la API REST SPARQL
-     de Wikidata (https://query.wikidata.org/sparql) vía MSXML2.ServerXMLHTTP y OPENJSON,
-     con respaldo automático (contingencia) si el motor SQL Server no tiene salida a internet.
+     de Wikidata (https://query.wikidata.org/sparql) vía MSXML2.ServerXMLHTTP y OPENJSON
+     (lanza error y registra en auditoría si no logra descargar datos).
 - Reutilización del Stored Procedure de Entrega 5 (persona.sp_CUERPO_TECNICO_ABM)
   implementando lógica de Upsert ('A' = Alta / 'M' = Modificación) sin duplicados.
 - Homologación de códigos ISO-3 de Wikidata a códigos FIFA de geografia.PAIS y torneo.SELECCION,
@@ -430,6 +430,7 @@ GO
 -- 2. PROCEDIMIENTO: CONSUMO DIRECTO DE API REST DE WIKIDATA (SPARQL -> JSON)
 -- ============================================================================
 CREATE OR ALTER PROCEDURE persona.sp_IMPORTAR_CUERPO_TECNICO_API
+    @RutaArchivoCSV      VARCHAR(500) = NULL,
     @SoloSeleccionesEnBD BIT = 1
 AS
 BEGIN
@@ -443,12 +444,14 @@ BEGIN
     DECLARE @SparqlQuery  VARCHAR(4000);
     DECLARE @SparqlValues VARCHAR(1000) = '';
     DECLARE @Msg          NVARCHAR(4000);
+    DECLARE @ErrSrc       VARCHAR(255);
+    DECLARE @ErrDesc      VARCHAR(2000);
     DECLARE @Origen       VARCHAR(50)  = 'API_REST_WIKIDATA';
 
     DECLARE @ResponseTable TABLE (JsonText NVARCHAR(MAX));
     DECLARE @JsonResponse  NVARCHAR(MAX);
 
-    -- Tabla staging donde se vuelcan los resultados de la API (o contingencia si no hay red)
+    -- Tabla staging donde se vuelcan los resultados de la API
     DECLARE @ApiStaging TABLE (
         nro_fila              INT IDENTITY(1,1) PRIMARY KEY,
         nro_doc               VARCHAR(20),
@@ -456,6 +459,7 @@ BEGIN
         entrenadorLabel       VARCHAR(200),
         fecha_nacimiento      VARCHAR(30),
         codigo_pais_seleccion CHAR(3),
+        seleccionLabel        VARCHAR(100),
         cargo_tecnico         VARCHAR(40)
     );
 
@@ -483,50 +487,57 @@ BEGIN
             SET @SparqlValues = '"ARG" "BRA" "USA" "MEX" "CAN" "FRA" "ESP" "DEU" "GBR" "URY" "COL" "JPN" "MAR"';
 
         SET @SparqlQuery =
-            'SELECT DISTINCT ' +
+            'SELECT ?nro_doc ?id_nacionalidad_pais ?eLabel ?fecha_nacimiento ?codigo_pais_seleccion ?sLabel ?cargo ' +
+            'WHERE { { ' +
+            'SELECT ?e ' +
             '(REPLACE(STR(?e),"http://www.wikidata.org/entity/Q","CT") AS ?nro_doc) ' +
             '(SAMPLE(?in) AS ?id_nacionalidad_pais) ' +
-            '?eLabel ' +
             '(SAMPLE(SUBSTR(STR(?fn),1,10)) AS ?fecha_nacimiento) ' +
             '(SAMPLE(?is) AS ?codigo_pais_seleccion) ' +
+            '(SAMPLE(?s) AS ?s) ' +
+            '(SAMPLE(?c) AS ?cargo) ' +
             'WHERE { ' +
+            'hint:Query hint:optimizer "None" . ' +
             'VALUES ?is { ' + @SparqlValues + ' } ' +
-            'VALUES ?t { wd:Q6979593 wd:Q219458 } ' +
-            '?s wdt:P31 ?t; wdt:P286 ?e; wdt:P17 ?ps. ?ps wdt:P298 ?is. ' +
-            'MINUS { ?s wdt:P31 wd:Q23847779 } ' +
-            'MINUS { ?s wdt:P2094 wd:Q6581072 } ' +
+            '?ps wdt:P298 ?is . ' +
+            '?s wdt:P31 wd:Q6979593 . ' +
+            '?s wdt:P17 ?ps . ' +
+            'FILTER NOT EXISTS { ?s wdt:P31 wd:Q23847779 } ' +
+            'FILTER NOT EXISTS { ?s wdt:P2094 wd:Q6581072 } ' +
+            '{ ?s wdt:P286 ?e . BIND("Director Técnico" AS ?c) } ' +
+            'UNION ' +
+            '{ ?st ps:P6087 ?s . ?e p:P6087 ?st . FILTER NOT EXISTS { ?st pq:P582 ?fin } FILTER NOT EXISTS { ?s wdt:P286 ?e } BIND("Asistente Técnico" AS ?c) } ' +
             'OPTIONAL { ?e wdt:P569 ?fn } ' +
-            'OPTIONAL { ?e wdt:P27 ?pn. ?pn wdt:P298 ?in } ' +
-            'SERVICE wikibase:label { bd:serviceParam wikibase:language "es,en". ?e rdfs:label ?eLabel. } ' +
-            '} GROUP BY ?e ?eLabel';
+            'OPTIONAL { ?e wdt:P27 ?pn . ?pn wdt:P298 ?in } ' +
+            '} GROUP BY ?e } ' +
+            'SERVICE wikibase:label { bd:serviceParam wikibase:language "es,en". } }';
 
-        SET @UrlAPI = 'https://query.wikidata.org/sparql?format=json&query=' +
-                      REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                          @SparqlQuery,
-                          '%', '%25'),
-                          ' ', '%20'),
-                          '"', '%22'),
-                          '#', '%23'),
-                          '?', '%3F'),
-                          '{', '%7B'),
-                          '}', '%7D');
+        SET @UrlAPI = 'https://query.wikidata.org/sparql';
 
-        PRINT '  Endpoint API: https://query.wikidata.org/sparql (Formato: SPARQL JSON)';
+        PRINT '  Endpoint API: https://query.wikidata.org/sparql (POST - Formato: SPARQL JSON)';
 
-        EXEC @HResult = sp_OACreate 'MSXML2.ServerXMLHTTP', @Object OUT;
+        EXEC @HResult = sp_OACreate 'MSXML2.ServerXMLHTTP.6.0', @Object OUT;
         IF @HResult <> 0
-            THROW 50020, 'No se pudo inicializar MSXML2.ServerXMLHTTP.', 1;
+            THROW 50020, 'No se pudo inicializar MSXML2.ServerXMLHTTP.6.0.', 1;
 
-        EXEC @HResult = sp_OAMethod @Object, 'open', NULL, 'GET', @UrlAPI, 'false';
+        -- Timeouts en ms: resolve (15s), connect (15s), send (30s), receive (90s)
+        EXEC sp_OAMethod @Object, 'setTimeouts', NULL, 15000, 15000, 30000, 90000;
+
+        EXEC @HResult = sp_OAMethod @Object, 'open', NULL, 'POST', @UrlAPI, 'false';
         IF @HResult <> 0
             THROW 50021, 'Error al abrir conexión HTTP con Wikidata.', 1;
 
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Content-Type', 'application/sparql-query; charset=utf-8';
         EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'Accept', 'application/sparql-results+json';
-        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'User-Agent', 'UNLaM-Mundial2026-Grupo10/1.0';
+        EXEC sp_OAMethod @Object, 'setRequestHeader', NULL, 'User-Agent', 'UNLaM-Mundial2026-Grupo10/1.0 (https://unlam.edu.ar)';
 
-        EXEC @HResult = sp_OAMethod @Object, 'send';
+        EXEC @HResult = sp_OAMethod @Object, 'send', NULL, @SparqlQuery;
         IF @HResult <> 0
-            THROW 50022, 'Error al enviar solicitud HTTP a Wikidata.', 1;
+        BEGIN
+            EXEC sp_OAGetErrorInfo @Object, @ErrSrc OUT, @ErrDesc OUT;
+            SET @Msg = CONCAT('Error al enviar solicitud HTTP a Wikidata (', ISNULL(@ErrSrc, 'OLE'), '): ', ISNULL(@ErrDesc, 'Sin detalle'));
+            THROW 50022, @Msg, 1;
+        END;
 
         EXEC sp_OAGetProperty @Object, 'status', @Status OUT;
         IF @Status <> 200
@@ -546,14 +557,15 @@ BEGIN
         IF @JsonResponse IS NULL OR ISJSON(@JsonResponse) = 0
             THROW 50024, 'La respuesta JSON de la API fue truncada o inválida.', 1;
 
-        INSERT INTO @ApiStaging (nro_doc, id_nacionalidad_pais, entrenadorLabel, fecha_nacimiento, codigo_pais_seleccion, cargo_tecnico)
+        INSERT INTO @ApiStaging (nro_doc, id_nacionalidad_pais, entrenadorLabel, fecha_nacimiento, codigo_pais_seleccion, seleccionLabel, cargo_tecnico)
         SELECT
             LEFT(JSON_VALUE(B.value, '$.nro_doc.value'), 20),
             UPPER(LEFT(JSON_VALUE(B.value, '$.id_nacionalidad_pais.value'), 3)),
             JSON_VALUE(B.value, '$.eLabel.value'),
             JSON_VALUE(B.value, '$.fecha_nacimiento.value'),
             UPPER(LEFT(JSON_VALUE(B.value, '$.codigo_pais_seleccion.value'), 3)),
-            'Director Técnico'
+            LEFT(JSON_VALUE(B.value, '$.sLabel.value'), 100),
+            ISNULL(LEFT(JSON_VALUE(B.value, '$.cargo.value'), 40), 'Director Técnico')
         FROM OPENJSON(@JsonResponse, '$.results.bindings') AS B;
 
         PRINT '--> [OK] Datos descargados en vivo desde la API REST de Wikidata.';
@@ -565,83 +577,21 @@ BEGIN
             SET @Object = NULL;
         END;
 
-        SET @Msg = CONCAT('Aviso en llamada HTTP API Wikidata (se activará lote oficial Wikidata en caché): ', ERROR_MESSAGE());
+        SET @Msg = CONCAT('Error al descargar datos desde la API REST de Wikidata: ', ERROR_MESSAGE());
         INSERT INTO auditoria.LOG_IMPORTACION (proceso_origen, nro_fila, clave_registro, mensaje_error, linea_error)
-        VALUES (@Proceso, NULL, 'API_HTTP_FALLBACK', @Msg, ERROR_LINE());
-        PRINT '--> [ADVERTENCIA]: ' + @Msg;
+        VALUES (@Proceso, NULL, 'API_HTTP_ERROR', @Msg, ERROR_LINE());
+        THROW 50025, @Msg, 1;
     END CATCH;
 
-    -- 2. Modo Contingencia: Si el motor SQL Server no pudo salir a internet o truncó el payload,
-    --    se carga el snapshot oficial de Wikidata para las 48 selecciones del Mundial 2026
-    --    + 2 registros inválidos de prueba para evidenciar importación con errores parciales.
     IF NOT EXISTS (SELECT 1 FROM @ApiStaging)
     BEGIN
-        SET @Origen = 'SNAPSHOT_WIKIDATA_MUNDIAL2026';
-        PRINT '--> Cargando lote oficial de Wikidata para las selecciones del Mundial 2026...';
-
-        INSERT INTO @ApiStaging (nro_doc, id_nacionalidad_pais, entrenadorLabel, fecha_nacimiento, codigo_pais_seleccion, cargo_tecnico)
-        VALUES
-            -- CONMEBOL
-            ('CT313155',  'ARG', 'Lionel Scaloni',         '1978-05-16', 'ARG', 'Director Técnico'),
-            ('CT252102',  'ARG', 'Pablo Aimar',            '1979-11-03', 'ARG', 'Asistente Técnico'),
-            ('CT313702',  'ARG', 'Walter Samuel',          '1978-03-23', 'ARG', 'Asistente Técnico'),
-            ('CT171309',  'ITA', 'Carlo Ancelotti',        '1959-06-10', 'BRA', 'Director Técnico'),
-            ('CT295488',  'ARG', 'Marcelo Bielsa',         '1955-07-21', 'URU', 'Director Técnico'),
-            ('CT2422749', 'ARG', 'Néstor Lorenzo',         '1966-02-28', 'COL', 'Director Técnico'),
-            ('CT579608',  'ARG', 'Sebastián Beccacece',    '1980-12-17', 'ECU', 'Director Técnico'),
-            ('CT2077647', 'ARG', 'Gustavo Alfaro',         '1962-08-14', 'PAR', 'Director Técnico'),
-            -- CONCACAF
-            ('CT296087',  'ARG', 'Mauricio Pochettino',    '1972-03-02', 'USA', 'Director Técnico'),
-            ('CT461586',  'MEX', 'Javier Aguirre',         '1958-12-01', 'MEX', 'Director Técnico'),
-            ('CT1687923', 'USA', 'Jesse Marsch',           '1973-11-08', 'CAN', 'Director Técnico'),
-            ('CT5069337', 'ESP', 'Thomas Christiansen',    '1973-03-11', 'PAN', 'Director Técnico'),
-            ('CT317218',  'NED', 'Dick Advocaat',          '1947-09-27', 'CUW', 'Director Técnico'),
-            ('CT16014251','FRA', 'Sébastien Migné',        '1972-11-30', 'HAI', 'Director Técnico'),
-            -- UEFA
-            ('CT659553',  'ESP', 'Luis de la Fuente',      '1961-06-21', 'ESP', 'Director Técnico'),
-            ('CT43652',   'FRA', 'Didier Deschamps',       '1968-10-15', 'FRA', 'Director Técnico'),
-            ('CT2638956', 'GER', 'Julian Nagelsmann',      '1987-07-23', 'GER', 'Director Técnico'),
-            ('CT152625',  'GER', 'Thomas Tuchel',          '1973-08-29', 'ENG', 'Director Técnico'),
-            ('CT2018298', 'SCO', 'Steve Clarke',           '1963-08-29', 'SCO', 'Director Técnico'),
-            ('CT523555',  'ESP', 'Roberto Martínez',       '1973-07-13', 'POR', 'Director Técnico'),
-            ('CT183187',  'NED', 'Ronald Koeman',          '1963-03-21', 'NED', 'Director Técnico'),
-            ('CT357999',  'FRA', 'Rudi Garcia',            '1964-02-20', 'BEL', 'Director Técnico'),
-            ('CT375835',  'CRO', 'Zlatko Dalić',           '1966-10-26', 'CRO', 'Director Técnico'),
-            ('CT311358',  'SUI', 'Murat Yakin',            '1974-09-15', 'SUI', 'Director Técnico'),
-            ('CT84928',   'GER', 'Ralf Rangnick',          '1958-06-29', 'AUT', 'Director Técnico'),
-            ('CT2601874', 'CZE', 'Ivan Hašek',             '1963-09-06', 'CZE', 'Director Técnico'),
-            ('CT361202',  'BIH', 'Sergej Barbarez',        '1971-09-17', 'BIH', 'Director Técnico'),
-            ('CT533722',  'NOR', 'Ståle Solbakken',        '1968-02-27', 'NOR', 'Director Técnico'),
-            ('CT313114',  'DEN', 'Jon Dahl Tomasson',      '1976-08-29', 'SWE', 'Director Técnico'),
-            ('CT235133',  'ITA', 'Vincenzo Montella',      '1974-06-18', 'TUR', 'Director Técnico'),
-            -- CAF
-            ('CT553531',  'MAR', 'Walid Regragui',         '1975-09-23', 'MAR', 'Director Técnico'),
-            ('CT3148421', 'SEN', 'Pape Thiaw',             '1981-02-05', 'SEN', 'Director Técnico'),
-            ('CT464741',  'SUI', 'Vladimir Petković',      '1963-08-15', 'ALG', 'Director Técnico'),
-            ('CT556614',  'EGY', 'Hossam Hassan',          '1966-08-10', 'EGY', 'Director Técnico'),
-            ('CT15808005','CIV', 'Emerse Faé',             '1984-01-24', 'CIV', 'Director Técnico'),
-            ('CT2897101', 'TUN', 'Sami Trabelsi',          '1968-02-04', 'TUN', 'Director Técnico'),
-            ('CT440378',  'BEL', 'Hugo Broos',             '1952-04-10', 'RSA', 'Director Técnico'),
-            ('CT2406651', 'FRA', 'Sébastien Desabre',      '1976-08-02', 'COD', 'Director Técnico'),
-            ('CT4982124', 'CPV', 'Bubista',                '1970-01-06', 'CPV', 'Director Técnico'),
-            ('CT969527',  'GER', 'Otto Addo',              '1975-06-09', 'GHA', 'Director Técnico'),
-            -- AFC & OFC
-            ('CT558947',  'JPN', 'Hajime Moriyasu',        '1968-08-23', 'JPN', 'Director Técnico'),
-            ('CT484533',  'KOR', 'Hong Myung-bo',          '1969-02-12', 'KOR', 'Director Técnico'),
-            ('CT471636',  'IRN', 'Amir Ghalenoei',         '1963-11-21', 'IRN', 'Director Técnico'),
-            ('CT518832',  'AUS', 'Tony Popovic',           '1973-07-04', 'AUS', 'Director Técnico'),
-            ('CT703940',  'FRA', 'Hervé Renard',           '1968-09-30', 'KSA', 'Director Técnico'),
-            ('CT6061509', 'ESP', 'Luis García',            '1981-02-06', 'QAT', 'Director Técnico'),
-            ('CT5069100', 'ESP', 'Jesús Casas',            '1973-10-23', 'IRQ', 'Director Técnico'),
-            ('CT6937878', 'UZB', 'Timur Kapadze',          '1981-09-05', 'UZB', 'Director Técnico'),
-            ('CT3196839', 'MAR', 'Jamal Sellami',          '1970-10-06', 'JOR', 'Director Técnico'),
-            ('CT5215760', 'ENG', 'Darren Bazeley',         '1972-10-05', 'NZL', 'Director Técnico'),
-            -- Casos de prueba con error (Selección no clasificada al Mundial y Fecha futura inválida)
-            ('CT999901',  'ITA', 'Luciano Spalletti',      '1959-03-07', 'ITA', 'Director Técnico'),
-            ('CT999902',  'ARG', 'Entrenador Fecha Error', '2099-01-01', 'ARG', 'Asistente Técnico');
+        SET @Msg = N'La API REST de Wikidata no devolvió registros de cuerpo técnico para importar.';
+        INSERT INTO auditoria.LOG_IMPORTACION (proceso_origen, nro_fila, clave_registro, mensaje_error, linea_error)
+        VALUES (@Proceso, NULL, 'API_SIN_DATOS', @Msg, ERROR_LINE());
+        THROW 50026, @Msg, 1;
     END;
 
-    -- 3. Procesar @ApiStaging fila por fila invocando persona.sp_CUERPO_TECNICO_ABM
+    -- 2. Procesar @ApiStaging fila por fila invocando persona.sp_CUERPO_TECNICO_ABM
     DECLARE @FilaAPI INT = 1, @TotalAPI INT = (SELECT COUNT(*) FROM @ApiStaging);
     DECLARE @AltasAPI INT = 0, @ModAPI INT = 0, @ErrAPI INT = 0;
     DECLARE @DocAPI VARCHAR(20), @PaisNacAPI CHAR(3), @LabelAPI VARCHAR(200),
@@ -661,12 +611,16 @@ BEGIN
                                ELSE id_nacionalidad_pais END,
             @LabelAPI    = entrenadorLabel,
             @FechaTxtAPI = fecha_nacimiento,
-            @PaisSelAPI  = CASE codigo_pais_seleccion
-                               WHEN 'DEU' THEN 'GER' WHEN 'GBR' THEN 'ENG' WHEN 'NLD' THEN 'NED'
-                               WHEN 'PRT' THEN 'POR' WHEN 'HRV' THEN 'CRO' WHEN 'CHE' THEN 'SUI'
-                               WHEN 'URY' THEN 'URU' WHEN 'PRY' THEN 'PAR' WHEN 'DZA' THEN 'ALG'
-                               WHEN 'ZAF' THEN 'RSA' WHEN 'SAU' THEN 'KSA' WHEN 'HTI' THEN 'HAI'
-                               ELSE codigo_pais_seleccion END,
+            @PaisSelAPI  = CASE
+                               WHEN seleccionLabel LIKE '%Inglaterra%' OR seleccionLabel LIKE '%England%' THEN 'ENG'
+                               WHEN seleccionLabel LIKE '%Escocia%'    OR seleccionLabel LIKE '%Scotland%' THEN 'SCO'
+                               ELSE CASE codigo_pais_seleccion
+                                   WHEN 'DEU' THEN 'GER' WHEN 'GBR' THEN 'ENG' WHEN 'NLD' THEN 'NED'
+                                   WHEN 'PRT' THEN 'POR' WHEN 'HRV' THEN 'CRO' WHEN 'CHE' THEN 'SUI'
+                                   WHEN 'URY' THEN 'URU' WHEN 'PRY' THEN 'PAR' WHEN 'DZA' THEN 'ALG'
+                                   WHEN 'ZAF' THEN 'RSA' WHEN 'SAU' THEN 'KSA' WHEN 'HTI' THEN 'HAI'
+                                   ELSE codigo_pais_seleccion END
+                           END,
             @CargoAPI    = ISNULL(cargo_tecnico, 'Director Técnico')
         FROM @ApiStaging
         WHERE nro_fila = @FilaAPI;
@@ -729,33 +683,12 @@ BEGIN
                  ' | Altas: ', @AltasAPI,
                  ' | Modificados (Upsert): ', @ModAPI,
                  ' | Con error (Auditoría): ', @ErrAPI);
+
+    -- 3. Carga complementaria desde CSV (asistentes técnicos / resto del cuerpo técnico)
+    IF @RutaArchivoCSV IS NOT NULL AND LTRIM(RTRIM(@RutaArchivoCSV)) <> ''
+    BEGIN
+        PRINT '--> Iniciando carga complementaria de asistentes desde CSV...';
+        EXEC persona.sp_IMPORTAR_CUERPO_TECNICO_CSV @RutaArchivo = @RutaArchivoCSV;
+    END;
 END;
-GO
-
--- ============================================================================
--- 3. EJECUCIÓN AUTOMÁTICA Y CONSULTAS DE VERIFICACIÓN (IGUAL QUE EN 04_5)
--- ============================================================================
-EXEC persona.sp_IMPORTAR_CUERPO_TECNICO_API;
-GO
-
-SELECT
-    CT.nro_doc,
-    CT.tipo_doc,
-    P.nombre,
-    P.apellido,
-    P.fecha_nacimiento,
-    P.id_nacionalidad_pais AS id_pais_dt,
-    S.id_seleccion,
-    S.nombre_seleccion,
-    S.id_pais AS cod_seleccion,
-    CT.cargo_tecnico
-FROM persona.CUERPO_TECNICO CT
-INNER JOIN persona.PERSONA P ON P.nro_doc = CT.nro_doc AND P.tipo_doc = CT.tipo_doc
-INNER JOIN torneo.SELECCION S ON S.id_seleccion = CT.id_seleccion
-ORDER BY S.id_seleccion, CT.cargo_tecnico;
-
-SELECT *
-FROM auditoria.LOG_IMPORTACION
-WHERE proceso_origen LIKE '%CUERPO_TECNICO%'
-ORDER BY id_log DESC;
 GO
