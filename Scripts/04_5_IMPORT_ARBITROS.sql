@@ -219,7 +219,8 @@ BEGIN
                                 nombre VARCHAR(50), moneda VARCHAR(30), pbi DECIMAL(18,2) NULL);
     DECLARE @nPais INT = 1, @MaxPais INT, @CodPais CHAR(3), @NomPais VARCHAR(50),
             @MonPais VARCHAR(30), @PbiPais DECIMAL(18,2);
- 
+    DECLARE @PeriodoRef INT = 2023;
+
     INSERT INTO @PaisesExtra (id_pais, iso, nombre, moneda)
     VALUES ('ANG','AGO','Angola','Kwanza'),                     ('CMR','CMR','Camerún','Franco CFA'),
            ('CHI','CHL','Chile','Peso chileno'),                ('CHN','CHN','China','Yuan'),
@@ -267,7 +268,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             IF OBJECT_ID('tempdb..#RawPaises') IS NOT NULL DROP TABLE #RawPaises;
-            -- los países se cargan igual con PBI = 0
+            -- los paises se cargan igual con el PBI por defecto
             SET @Msg = CONCAT('No se pudo leer el CSV de países "', @RutaCSV_Paises, '": ', ERROR_MESSAGE());
             INSERT INTO auditoria.LOG_IMPORTACION (proceso_origen, nro_fila, clave_registro, mensaje_error, linea_error)
             VALUES (@Proceso, NULL, NULL, @Msg, ERROR_LINE());
@@ -277,15 +278,18 @@ BEGIN
     BEGIN TRY
         SELECT @MaxPais = MAX(n) FROM @PaisesExtra;
  
+
         WHILE @nPais <= @MaxPais
         BEGIN
-            SELECT @CodPais = id_pais, @NomPais = nombre, @MonPais = moneda, @PbiPais = ISNULL(pbi, 0)
+            SELECT @CodPais = id_pais, @NomPais = nombre, @MonPais = moneda, @PbiPais = ISNULL(pbi, 15000.00)
             FROM @PaisesExtra WHERE n = @nPais;
  
             IF NOT EXISTS (SELECT 1 FROM geografia.PAIS WHERE id_pais = @CodPais)
+            BEGIN
                 EXEC geografia.sp_PAIS_ABM @Accion = 'A', @id_pais = @CodPais, @nombre_pais = @NomPais,
                                            @moneda_pais = @MonPais, @pbi_per_capita_actual = @PbiPais;
- 
+                EXEC geografia.sp_INDICADOR_ECONOMICO_PAIS_ABM @Accion = 'A', @id_pais = @CodPais, @periodo_anio = @PeriodoRef, @pbi_per_capita_usd = @PbiPais, @poblacion_total = 10000000, @indice_inflacion = 5.00;
+            END
             SET @nPais += 1;
         END;
     END TRY
