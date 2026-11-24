@@ -277,7 +277,6 @@ BEGIN
  
     BEGIN TRY
         SELECT @MaxPais = MAX(n) FROM @PaisesExtra;
- 
 
         WHILE @nPais <= @MaxPais
         BEGIN
