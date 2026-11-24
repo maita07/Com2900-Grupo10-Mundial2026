@@ -6,7 +6,7 @@ Materia: Base de Datos Aplicada (Comisión 5600) - 2026 2C
 Grupo 10: Copa Mundial de la FIFA 2026
 
 Entrega 9
-Archivo: App.py (Pagina principal del sistema Streamlit)
+Archivo: Reportes.py (Pagina de Reportes)
 ================================================================================
 """
 import streamlit as st
