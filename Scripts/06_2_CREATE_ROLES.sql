@@ -22,6 +22,15 @@ Descripción:
  
 ================================================================================
 */
+USE DB_Mundial2026_Grupo10;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'seguridad')
+BEGIN
+    EXEC('CREATE SCHEMA seguridad AUTHORIZATION dbo;');
+END;
+GO
+
 
 -- 1: En MASTER se crean los Logins y sus Claves (Nivel Servidor)
 USE master;
@@ -115,4 +124,7 @@ BEGIN
 
     PRINT '--> Configuración de roles y permisos aplicada con éxito.';
 END;
+GO
+
+EXEC seguridad.sp_CONFIGURAR_ROLES_Y_PERMISOS;
 GO
