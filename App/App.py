@@ -14,6 +14,24 @@ import sys
 import base64
 import os
 
+# Configuración de página
+st.set_page_config(
+    page_title="BASES DE DATOS APLICADAS - Mundial 2026",
+    page_icon="⚽",
+    layout="wide"  # 'wide' aprovecha todo el ancho de la ventana
+)
+
+# Ruta a la imagen del banner
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RUTA_BANNER = os.path.join(BASE_DIR, "assets", "Banner.jpg")
+
+# Mostrar el banner arriba de todo
+if os.path.exists(RUTA_BANNER):
+    st.image(RUTA_BANNER, use_container_width=True)
+elif os.path.exists("Banner.jpg"):
+    st.image("Banner.jpg", use_container_width=True)
+else:
+    st.warning("⚠️ No se encontró el archivo del banner.")
 
 # BARRA LATERAL PERSONALIZADA
 with st.sidebar:
@@ -43,6 +61,7 @@ with st.sidebar:
     st.page_link("App.py", label="Página Principal", icon="🏠")
     
     # Enlace a tu pantalla de importación
+    st.page_link("pages/4_Validaciones_Criterios.py", label="Criterios de Aceptacion", icon="📖")
     st.page_link("pages/1_Importacion.py", label="Importación", icon="📥")
     st.page_link("pages/2_Gestion_ABM.py", label="Gestión de ABM", icon="⚽")
     st.page_link("pages/3_Reportes.py", label="Reportes del Torneo", icon="📊")
@@ -139,12 +158,11 @@ st.set_page_config(
 col_titulo, col_logo = st.columns([4, 1])
 
 with col_titulo:
-    st.title("🏆 Copa Mundial de la FIFA 2026™")
-    st.subheader("Sistema Integral de Gestión y Administración de Base de Datos")
-   
-
+    st.title("🏆 Sistema de registro y Gestión del Mundial de Fútbol")
+    st.subheader("2°C 2026 - Grupo 10")
+ 
 st.write("---")
-st.markdown("**Sedes Oficiales:** Estados Unidos 🇺🇸 | México 🇲🇽 | Canadá 🇨🇦")
+
 # Guía de Módulos del Sistema
 st.markdown("### 🧭 Módulos Disponibles en la Aplicación")
 st.markdown("Seleccione cualquiera de los módulos desde la barra lateral izquierda:")

@@ -14,6 +14,24 @@ import sys
 import base64
 import os
 
+# Configuración de página
+st.set_page_config(
+    page_title="BASES DE DATOS APLICADAS - Mundial 2026",
+    page_icon="⚽",
+    layout="wide"  # 'wide' aprovecha todo el ancho de la ventana
+)
+
+# Ruta a la imagen del banner
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RUTA_BANNER = os.path.join(BASE_DIR, "..","assets", "Banner.jpg")
+
+# Mostrar el banner arriba de todo
+if os.path.exists(RUTA_BANNER):
+    st.image(RUTA_BANNER, use_container_width=True)
+elif os.path.exists("Banner.jpg"):
+    st.image("Banner.jpg", use_container_width=True)
+else:
+    st.warning("⚠️ No se encontró el archivo del banner.")
 
 # BARRA LATERAL PERSONALIZADA
 with st.sidebar:
@@ -43,6 +61,7 @@ with st.sidebar:
     st.page_link("App.py", label="Página Principal", icon="🏠")
     
     # Enlace a tu pantalla de importación
+    st.page_link("pages/4_Validaciones_Criterios.py", label="Criterios de Aceptacion", icon="📖")
     st.page_link("pages/1_Importacion.py", label="Importación", icon="📥")
     st.page_link("pages/2_Gestion_ABM.py", label="Gestión de ABM", icon="⚽")
     st.page_link("pages/3_Reportes.py", label="Reportes del Torneo", icon="📊")
