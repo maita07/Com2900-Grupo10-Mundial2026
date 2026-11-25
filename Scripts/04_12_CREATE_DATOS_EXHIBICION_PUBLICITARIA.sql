@@ -127,7 +127,7 @@ SET NOCOUNT ON;
             JOIN comercial.PIEZA_MERCADO mer ON mer.id_pieza = pp.id_pieza
             JOIN geografia.PAIS p ON p.id_pais = mer.id_pais
 
-            WHERE par.nro_fila = 1
+            WHERE par.nro_fila = @Fila
         ), 
         mejor_mercado AS(
             SELECT *, ROW_NUMBER() OVER (
