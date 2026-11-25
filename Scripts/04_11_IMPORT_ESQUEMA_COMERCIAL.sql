@@ -3,7 +3,7 @@
 UNLaM - Universidad Nacional de La Matanza
 Departamento de Ingeniería e Investigaciones Tecnológicas
 Materia: Base de Datos Aplicada (Comisión 5600)
-Entrega 6 - Script 04_10: Importación de ANUNCIANTE, CAMPANIA_PUBLICITARIA,
+Entrega 6 - Script 04_11: Importación de ANUNCIANTE, CAMPANIA_PUBLICITARIA,
 PIEZA_PUBLICITARIA y PIEZA_MERCADO
 Creacion de los datos de EXHIBICION_PUBLICITARIA 
 2026 - 2C
@@ -23,6 +23,16 @@ Descripcion:
 	Cabe aclarar que esta opcion fue tomada debido a que no encontramos el recurso
 	en ningun lado. Por lo que se crearon datos con publicitantes reales, sus productos
 	y algunas campañas existentes y luego se subieron a la api creada en "supabase". 
+
+    Se realiza tambien el sp para la creacion de los datos de EXHIBICION_PUBLICITARIA,
+    la cual determinara las campañas publicitarias de cada partido segun el siguiente orden:
+        1_El mercado destino sea jugador del partido
+        2_El mercado destino con mas PBI por capita
+        3_El mercado en el que sea Prime_Time
+
+    Por ultimo se realiza la creacion de la funcion obtenerDesplazamientoUTC,
+    la cual recibe por parametro el id de la seleccion y devuelve el desplazamiento del horario UTC
+    o devuelve 0 por defecto
 
 ================================================================================
 */

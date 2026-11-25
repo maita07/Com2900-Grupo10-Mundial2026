@@ -3,7 +3,7 @@
 UNLaM - Universidad Nacional de La Matanza
 Departamento de Ingeniería e Investigaciones Tecnológicas
 Materia: Base de Datos Aplicada (Comisión 5600)
-Entrega 6 - Script 04_10_1: Creacion de la tabla PIEZA_MERCADO y su correspondiente ABM
+Entrega 6 - Script 04_10: Creacion de la tabla PIEZA_MERCADO y su correspondiente ABM
 2026 - 2C
 Grupo 10
 
