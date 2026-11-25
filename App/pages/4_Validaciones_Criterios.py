@@ -36,6 +36,73 @@ else:
     st.warning("⚠️ No se encontró el archivo del banner.")
 
 # BARRA LATERAL PERSONALIZADA
+st.markdown("""
+    <style>
+        /* 1. FIJAR ANCHO DEL SIDEBAR (250px exactos) */
+        section[data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        [data-testid="stSidebarUserContent"],
+        [data-testid="stSidebarNav"] {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+            overflow-x: clip !important; /* 'clip' es más estricto que 'hidden' y no genera contexto de scroll */
+        }
+
+        /* ELIMINAR CUALQUIER BARRA HORIZONTAL DEL SIDEBAR */
+        section[data-testid="stSidebar"]::-webkit-scrollbar,
+        [data-testid="stSidebarContent"]::-webkit-scrollbar,
+        [data-testid="stSidebarNav"]::-webkit-scrollbar,
+        div[data-testid="stSidebarUserContent"]::-webkit-scrollbar,
+        section[data-testid="stSidebar"] *::-webkit-scrollbar:horizontal {
+            display: none !important;
+            width: 0px !important;
+            height: 0px !important;
+        }
+
+        /* Firefox y Edge moderno */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        /* ÍCONOS COMPLETOS */
+        ul[data-testid="stSidebarNavItems"] a {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0.35rem 0.5rem !important;
+            overflow: hidden !important;
+        }
+
+        /* Ancho rígido para el emoji / icono */
+        ul[data-testid="stSidebarNavItems"] a span:first-child,
+        ul[data-testid="stSidebarNavItems"] a svg {
+            min-width: 1.4rem !important;
+            width: 1.4rem !important;
+            flex-shrink: 0 !important;
+            margin-right: 0.4rem !important;
+        }
+
+        /* Texto sin saltar ni desbordar */
+        ul[data-testid="stSidebarNavItems"] a span:last-child {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            flex-grow: 1 !important;
+        }
+
+        /* 4. OCULTAR BOTÓN (<<) Y CONTROL DE ARRASTRE */
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarHeader"] button,
+        [data-testid="collapsedControl"],
+        [data-testid="stSidebarResizeHandle"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     # Ocultamos el menú automático nativo de Streamlit
     st.markdown("""
@@ -53,7 +120,7 @@ with st.sidebar:
     # Logo institucional arriba (si existe en assets)
     ruta_logo = os.path.join(os.path.dirname(__file__),"..", "assets", "logo_mundial2026_unlam.png")
     if os.path.exists(ruta_logo):
-        st.image(ruta_logo, use_container_width=True)
+        st.image(ruta_logo,width=220)
 
     # 3. Título del panel
     st.markdown("### **Panel de Control**")
@@ -221,4 +288,9 @@ with tab_sedes:
 
     st.subheader("⚖️ Caso: Descarte Arbitral por Conflicto de Nacionalidad")
     st.caption("Verificación de que un árbitro no pueda ser designado si comparte nacionalidad con alguno de los países en cancha.")
+
+st.write("---")
+# Pie de Página Institucional
+
+st.caption("Trabajo Práctico Integrador 2026 - 2C | Universidad Nacional de La Matanza (UNLaM) | Bases de Datos Aplicadas | Grupo 10")
 

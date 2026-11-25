@@ -1,0 +1,10 @@
+[theme]
+base = "dark"
+primaryColor = "#F1B82D"             # Dorado del trofeo / acento deportivo
+backgroundColor = "#0E1117"          # Fondo principal oscuro profundo
+secondaryBackgroundColor = "#161B22" # Fondo del Sidebar y tarjetas
+textColor = "#FFFFFF"                # Texto blanco limpio
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"              # Oculta menús innecesarios para una vista más limpia

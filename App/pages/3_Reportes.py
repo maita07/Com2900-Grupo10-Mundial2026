@@ -34,6 +34,73 @@ else:
     st.warning("⚠️ No se encontró el archivo del banner.")
 
 # BARRA LATERAL PERSONALIZADA
+st.markdown("""
+    <style>
+        /* 1. FIJAR ANCHO DEL SIDEBAR (250px exactos) */
+        section[data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        [data-testid="stSidebarUserContent"],
+        [data-testid="stSidebarNav"] {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+            overflow-x: clip !important; /* 'clip' es más estricto que 'hidden' y no genera contexto de scroll */
+        }
+
+        /* ELIMINAR CUALQUIER BARRA HORIZONTAL DEL SIDEBAR */
+        section[data-testid="stSidebar"]::-webkit-scrollbar,
+        [data-testid="stSidebarContent"]::-webkit-scrollbar,
+        [data-testid="stSidebarNav"]::-webkit-scrollbar,
+        div[data-testid="stSidebarUserContent"]::-webkit-scrollbar,
+        section[data-testid="stSidebar"] *::-webkit-scrollbar:horizontal {
+            display: none !important;
+            width: 0px !important;
+            height: 0px !important;
+        }
+
+        /* Firefox y Edge moderno */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        /* ÍCONOS COMPLETOS */
+        ul[data-testid="stSidebarNavItems"] a {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0.35rem 0.5rem !important;
+            overflow: hidden !important;
+        }
+
+        /* Ancho rígido para el emoji / icono */
+        ul[data-testid="stSidebarNavItems"] a span:first-child,
+        ul[data-testid="stSidebarNavItems"] a svg {
+            min-width: 1.4rem !important;
+            width: 1.4rem !important;
+            flex-shrink: 0 !important;
+            margin-right: 0.4rem !important;
+        }
+
+        /* Texto sin saltar ni desbordar */
+        ul[data-testid="stSidebarNavItems"] a span:last-child {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            flex-grow: 1 !important;
+        }
+
+        /* 4. OCULTAR BOTÓN (<<) Y CONTROL DE ARRASTRE */
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarHeader"] button,
+        [data-testid="collapsedControl"],
+        [data-testid="stSidebarResizeHandle"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     # Ocultamos el menú automático nativo de Streamlit
     st.markdown("""
@@ -51,7 +118,7 @@ with st.sidebar:
     # Logo institucional arriba (si existe en assets)
     ruta_logo = os.path.join(os.path.dirname(__file__),"..", "assets", "logo_mundial2026_unlam.png")
     if os.path.exists(ruta_logo):
-        st.image(ruta_logo, use_container_width=True)
+        st.image(ruta_logo,width=220)
 
     # 3. Título del panel
     st.markdown("### **Panel de Control**")
@@ -158,14 +225,8 @@ st.set_page_config(
 col_titulo, col_logo = st.columns([4, 1])
 
 with col_titulo:
-    st.title("🏆 Copa Mundial de la FIFA 2026™")
-    st.subheader("Sistema Integral de Gestión y Administración de Base de Datos")
-   
-
-st.write("---")
-st.markdown("""
-#### 📊 3. Reportes y Analítica 
-    """)
+    st.header(" 📊 Reportes (Entrega 7)")
+st.write("---")  
 
 conn = obtener_conexion()
 st.markdown("##### Tarjetas por selección y jugador")
@@ -186,32 +247,6 @@ st.download_button("Descargar XML de arbitros", xml, file_name="reporte_arbitros
 
 conn.close()
 st.write("---")
-# Estado del Servidor y Base de Datos 
-st.markdown("### 🔌 Estado de Conexión al Motor de Base de Datos")
-
-if CONEXION_DISPONIBLE:
-    try:
-        conn = obtener_conexion()
-        cursor = conn.cursor()
-        cursor.execute("SELECT @@SERVERNAME, DB_NAME(), GETDATE();")
-        servidor, base_datos, fecha_hora = cursor.fetchone()
-        conn.close()
-
-        col_st1, col_st2, col_st3 = st.columns(3)
-        with col_st1:
-            st.success(f"🟢 **Servidor Conectado:**\n`{servidor}`")
-        with col_st2:
-            st.info(f"🗄️ **Base de Datos:**\n`{base_datos}`")
-        with col_st3:
-            st.metric(label="Hora del Servidor SQL", value=fecha_hora.strftime("%H:%M:%S"))
-    except Exception as e:
-        st.error(f"🔴 **Error de Conexión a SQL Server:** No se pudo enlazar con la base.\n\n*Detalle técnico:* `{e}`")
-        st.warning("Verifique que el servicio de SQL Server esté iniciado y que `src/conexion.py` tenga el servidor correcto.")
-else:
-    st.warning("⚠️ No se encontró el archivo `src/conexion.py`.")
-
-st.write("---")
-
 # Pie de Página Institucional
 
-st.caption("Trabajo Práctico Integrador 2026 - 2C | Universidad Nacional de La Matanza (UNLaM) | Base de Datos Aplicadas")
+st.caption("Trabajo Práctico Integrador 2026 - 2C | Universidad Nacional de La Matanza (UNLaM) | Bases de Datos Aplicadas | Grupo 10")
