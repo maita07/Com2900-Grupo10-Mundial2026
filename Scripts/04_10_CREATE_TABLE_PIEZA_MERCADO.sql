@@ -53,7 +53,7 @@ DECLARE @ErroresAcumulados VARCHAR(MAX) ='';
 
 SET NOCOUNT ON;
 
-	IF @Accion NOT IN ('A', 'B') OR @Accion IS NULL
+	IF @Accion NOT IN ('A', 'B', 'M') OR @Accion IS NULL
 		SET @ErroresAcumulados += '- La acción es obligatoria y debe ser A (Alta), M(Modificacion) o B (Baja).' + CHAR(13);
 
 	IF @id_pieza IS NULL OR NOT EXISTS (SELECT id_pieza FROM comercial.PIEZA_PUBLICITARIA WHERE id_pieza = @id_pieza)
