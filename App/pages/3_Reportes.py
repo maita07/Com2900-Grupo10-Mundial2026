@@ -145,14 +145,28 @@ with col_titulo:
 
 st.write("---")
 st.markdown("""
-#### 📊 3. Reportes y Analítica (Entrega 7/9)
-* **Métricas del Torneo:** Estadísticas de goles por fase, capacidad de estadios y fixture.
-    * **Indicadores Económicos:** Relación de selecciones y PBI per cápita de sus federaciones.
-    * **Seguridad y Roles:** Compatibilidad con las políticas POLP del rol de consulta.
+#### 📊 3. Reportes y Analítica 
     """)
+
+conn = obtener_conexion()
+st.markdown("##### Tarjetas por selección y jugador")
+tarjetas = conn.execute("EXEC reportes.sp_REPORTE_TARJETAS_SELECCION_JUGADOR @FormatoXML = 0").fetchall()
+estado = st.radio("Estado", ["Todos", "HABILITADO", "SUSPENDIDO", "SUSPENSION CUMPLIDA"])
+if estado != "Todos":
+    tarjetas = [t for t in tarjetas if t.Estado == estado]
+st.table([tuple(t) for t in tarjetas])
+xml = "".join(fila[0] for fila in conn.execute("EXEC reportes.sp_REPORTE_TARJETAS_SELECCION_JUGADOR @FormatoXML = 1").fetchall())
+st.download_button("Descargar XML de tarjetas", xml, file_name="reporte_tarjetas.xml")
 
 st.write("---")
 
+st.markdown("##### Designaciones arbitrales")
+st.table([tuple(f) for f in conn.execute("EXEC reportes.sp_REPORTE_DESIGNACIONES_ARBITRALES @FormatoXML = 0").fetchall()])
+xml = "".join(fila[0] for fila in conn.execute("EXEC reportes.sp_REPORTE_DESIGNACIONES_ARBITRALES @FormatoXML = 1").fetchall())
+st.download_button("Descargar XML de arbitros", xml, file_name="reporte_arbitros.xml")
+
+conn.close()
+st.write("---")
 # Estado del Servidor y Base de Datos 
 st.markdown("### 🔌 Estado de Conexión al Motor de Base de Datos")
 

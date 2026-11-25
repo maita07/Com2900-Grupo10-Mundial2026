@@ -13,6 +13,8 @@ import streamlit as st
 import sys
 import base64
 import os
+import pyodbc
+import datetime
 
 
 # BARRA LATERAL PERSONALIZADA
@@ -149,7 +151,7 @@ st.markdown("""
 #### Gestion ABM de Sedes
 """)
 
-accion = st.radio("Operación", ["Alta", "Modificación", "Baja"])
+accion = st.radio("Operación sedes", ["Alta", "Modificación", "Baja"])
 id_sede = st.number_input("ID de sede", step=1)
 id_pais = st.text_input("Código de pais (ej: ARG)")
 nombre = st.text_input("Nombre del estadio")
@@ -170,7 +172,41 @@ if st.button("Confirmar"):
 
 st.markdown("##### Sedes registradas")
 conn = obtener_conexion()
-st.table(conn.execute("SELECT * FROM torneo.SEDE ORDER BY id_sede").fetchall())
+st.table([tuple(f) for f in conn.execute("SELECT * FROM torneo.SEDE ORDER BY id_sede").fetchall()])
+
+st.write("---")
+
+st.markdown("""
+#### Gestion ABM de Jugadores
+""")
+accion_jugador = st.radio("Operación jugadores", ["Alta", "Modificación", "Baja"])
+tipo_doc = st.selectbox("Tipo de documento", ["DNI", "PASAPORTE", "CI", "LE", "LC"])
+nro_doc = st.text_input("Número de documento")
+nacionalidad = st.text_input("Código de país de nacionalidad (ej: ARG)")
+nombre_jugador = st.text_input("Nombre")
+apellido = st.text_input("Apellido")
+fecha_nacimiento = st.date_input("Fecha de nacimiento", value=None, min_value=datetime.date(1900, 1, 1), format="DD/MM/YYYY")
+posicion = st.text_input("Posición (GK, DF, MF o FW)")
+club = st.text_input("Club de origen")
+peso = st.number_input("Peso (kg)", step=0.1)
+altura = st.number_input("Altura (cm)", step=0.1)
+
+if st.button("Confirmar jugador"):
+    conn = obtener_conexion()
+    conn.autocommit = True
+    try:
+        conn.execute("EXEC persona.sp_JUGADOR_ABM @Accion = ?, @nro_doc = ?, @tipo_doc = ?, @id_nacionalidad_pais = ?, @nombre = ?, @apellido = ?, @fecha_nacimiento = ?, @posicion_habitual = ?, @club_origen = ?, @peso_kg = ?, @altura_cm = ?, @es_convocado = NULL",
+                     accion_jugador[0], nro_doc, tipo_doc, nacionalidad, nombre_jugador, apellido, fecha_nacimiento, posicion, club, peso, altura)
+        st.success("Operación realizada correctamente.")
+    except pyodbc.Error as e:
+        st.error(e.args[1])
+    conn.close()
+
+st.markdown("##### Jugadores registrados")
+conn = obtener_conexion()
+st.table([tuple(f) for f in conn.execute("SELECT P.tipo_doc, P.nro_doc, P.nombre, P.apellido, P.id_nacionalidad_pais, P.fecha_nacimiento, J.posicion_habitual, J.club_origen, J.peso_kg, J.altura_cm "
+                                             "FROM persona.JUGADOR J JOIN persona.PERSONA P ON P.tipo_doc = J.tipo_doc AND P.nro_doc = J.nro_doc ORDER BY P.apellido, P.nombre").fetchall()], height=300)
+
 conn.close()
 
 st.write("---")
