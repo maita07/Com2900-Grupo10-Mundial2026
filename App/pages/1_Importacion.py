@@ -342,7 +342,7 @@ if btn_importar:
 
                     # Importar Confederaciones (XML)
                     cursor.execute(f"EXEC geografia.sp_IMPORTAR_CONFEDERACIONES_XML @RutaArchivo = '{ruta_conf_sql}';")
-
+                    
                     # Sincronizar Fases
                     cursor.execute("EXEC torneo.sp_IMPORTAR_FASES;")
 
@@ -352,17 +352,26 @@ if btn_importar:
                     # Guardamos la consulta directa a las Sedes cargadas
                     st.session_state["importacion_ok"] = True
                     st.session_state["tabla_a_mostrar"] = "torneo.FASE_TORNEO"
-                    st.session_state["query_mostrar"] = """
+                    st.session_state["query_mostrar"] = "SELECT TOP 100 * FROM torneo.FASE_TORNEO ORDER BY 1 ASC;"
                     st.session_state["importacion_ok"] = True
                     st.session_state["tabla_a_mostrar"] = "torneo.SEDE"
-                    st.session_state["query_mostrar"] = "SELECT TOP 100 * FROM torneo.SEDE ORDER BY 1 ASC;"
-                        """
+                    st.session_state["query_mostrar"] = """SELECT 
+                                                                p.nombre_pais               AS [País],
+                                                                COUNT(s.id_sede)            AS [Total de Estadios],
+                                                                SUM(s.capacidad)            AS [Capacidad Total],
+                                                                AVG(s.capacidad)            AS [Capacidad Promedio]
+                                                            FROM geografia.PAIS p
+                                                            INNER JOIN torneo.SEDE s 
+                                                                ON p.id_pais = s.id_pais
+                                                            GROUP BY p.nombre_pais
+                                                            ORDER BY [Total de Estadios] DESC;"""
+                        
                 # --- 3. ÁRBITROS ---
                 elif proceso_elegido.startswith("3. Árbitros"):
                     ruta_arb_csv_sql = ruta_arb_csv.replace("'", "''")
                     ruta_arb_html_sql = ruta_arb_html.replace("'", "''")
                     try:
-                        cursor.execute(f"EXEC persona.sp_IMPORTAR_ARBITROS @RutaCSV = '{ruta_arb_csv_sql}', @RutaHTML = '{ruta_arb_html_sql}';")
+                        cursor.execute(f"EXEC persona.sp_IMPORTAR_ARBITROS @RutaArchivoCSV = '{ruta_arb_csv_sql}', @RutaArchivoHTML = '{ruta_arb_html_sql}';")
                     except Exception:
                         cursor.execute("EXEC persona.sp_IMPORTAR_ARBITROS;")
 
@@ -370,15 +379,15 @@ if btn_importar:
                     st.session_state["tabla_a_mostrar"] = "persona.ARBITRO"
                     st.session_state["query_mostrar"] = """
                         SELECT TOP 100
-                            a.id_arbitro,
+                            a.nro_doc,
                             p.nombre AS [Nombre],
                             p.apellido AS [Apellido],
                             pa.nombre_pais AS [Nacionalidad],
-                            a.rol_principal AS [Rol Arbitral]
+                            a.id_rol AS [Rol Arbitral]
                         FROM persona.ARBITRO a
-                        INNER JOIN persona.PERSONA p ON a.id_persona = p.id_persona
-                        LEFT JOIN geografia.PAIS pa ON p.id_pais = pa.id_pais
-                        ORDER BY a.id_arbitro ASC;
+                        INNER JOIN persona.PERSONA p ON a.nro_doc = p.nro_doc
+                        LEFT JOIN geografia.PAIS pa ON p.id_nacionalidad_pais = pa.id_pais
+                        ORDER BY a.nro_doc ASC;
                     """
 
                 conn.close()
