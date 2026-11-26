@@ -245,6 +245,16 @@ st.table([tuple(f) for f in conn.execute("EXEC reportes.sp_REPORTE_DESIGNACIONES
 xml = "".join(fila[0] for fila in conn.execute("EXEC reportes.sp_REPORTE_DESIGNACIONES_ARBITRALES @FormatoXML = 1").fetchall())
 st.download_button("Descargar XML de arbitros", xml, file_name="reporte_arbitros.xml")
 
+st.write("---")
+
+st.markdown("##### Ocupacion publicitaria por sede")
+cursor = conn.execute("EXEC reportes.sp_REPORTE_OCUPACION_PUBLICITARIA @FormatoXML = 0")
+columnas = [col[0].replace("_"," ") for col in cursor.description]
+datos = [dict(zip(columnas, fila)) for fila in cursor.fetchall()]
+st.table(datos)
+xml = "".join(fila[0] for fila in conn.execute("EXEC reportes.sp_REPORTE_OCUPACION_PUBLICITARIA @FormatoXML = 1").fetchall())
+st.download_button("Descargar XML de ocupacion publicitaria", xml, file_name="reporte_ocupacion.xml")
+
 conn.close()
 st.write("---")
 # Pie de Página Institucional
