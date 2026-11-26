@@ -13,23 +13,11 @@ Integrantes:
 
 Archivo: 06_1_CIFRADO.sql
 Descripcion:
-- Stored Procedure que cifra la fecha de nacimiento, peso y altura de las personas y jugadores.
+- Stored Procedure que cifra la fecha de nacimiento, peso y altura, nro de documento, nombre y apellido de las personas y jugadores.
 - Usa AES256 ya que permite descifrar para leer dicho dato. Con sha256 no se puede.
 - No ciframos otros datos debido a que se llaman o utilizan regularmente, como el dni como PK.
 ================================================================================
 */
-
-
---------------------------------------------
--- 
---       LEER ANTES DE EJECUTAR
--- al ejecutar esto, la gran mayoria de scripts (especialmente los de abm y los de import) van a dejar de funcionar correctamente
--- ya que modifica las estructuras originales
---
---------------------------------------------
-
-
-
 
 
 USE DB_Mundial2026_Grupo10;
@@ -43,9 +31,10 @@ END;
 GO
 
 -- 1. COLUMNAS PARA LOS DATOS CIFRADOS
+IF COL_LENGTH('persona.PERSONA', 'nombre_cifrado') IS NULL
+    ALTER TABLE persona.PERSONA ADD nombre_cifrado VARBINARY(256) NULL, apellido_cifrado VARBINARY(256) NULL, fecha_nacimiento_cifrada VARBINARY(256) NULL;
 IF COL_LENGTH('persona.PERSONA', 'nro_doc_cifrado') IS NULL
-    ALTER TABLE persona.PERSONA ADD nombre_cifrado VARBINARY(256) NULL, apellido_cifrado VARBINARY(256) NULL,
-                                    fecha_nacimiento_cifrada VARBINARY(256) NULL;
+    ALTER TABLE persona.PERSONA ADD nro_doc_cifrado VARBINARY(256) NULL;
 IF COL_LENGTH('persona.JUGADOR', 'peso_kg_cifrado') IS NULL
     ALTER TABLE persona.JUGADOR ADD peso_kg_cifrado VARBINARY(256) NULL, altura_cm_cifrado VARBINARY(256) NULL;
 GO
