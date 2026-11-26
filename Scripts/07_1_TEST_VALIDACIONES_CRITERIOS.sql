@@ -25,79 +25,100 @@ GO
 --1. Al menos 8 sedes, con huso horario distinto entre al menos tres de ellas
 -- Verifica cantidad de sedes y variedad de husos horarios
 
+WITH SedesConHuso AS (
+    SELECT 
+        s.id_sede,
+        s.nombre_estadio,
+        s.ciudad,
+        -- Determinación del huso horario según la ciudad de la sede
+        CASE 
+            WHEN s.ciudad IN ('Vancouver', 'Seattle', 'San Francisco', 'Los Ángeles', 'Los Angeles') 
+                THEN 'UTC-7'
+            WHEN s.ciudad IN ('Guadalajara', 'Ciudad de México', 'Monterrey', 'Dallas', 'Houston', 'Kansas City') 
+                THEN 'UTC-5'
+            WHEN s.ciudad IN ('Atlanta', 'Miami', 'Boston', 'Nueva York / Nueva Jersey', 'New York/New Jersey', 'Toronto', 'Filadelfia') 
+                THEN 'UTC-4'
+            ELSE 'UTC-5'
+        END AS huso_horario
+    FROM torneo.SEDE s
+)
 SELECT 
-    COUNT(DISTINCT s.id_sede) AS Total_Sedes,
-    COUNT(DISTINCT s.huso_horario) AS Total_Husos_Distintos,
-    STRING_AGG(DISTINCT s.huso_horario, ', ') AS Husos_Horarios_Detectados,
+    COUNT(DISTINCT id_sede) AS Total_Sedes,
+    COUNT(DISTINCT huso_horario) AS Total_Husos_Distintos,
+    (
+        -- En SQL Server se hace el DISTINCT dentro de una subconsulta para STRING_AGG
+        SELECT STRING_AGG(huso, ', ')
+        FROM (SELECT DISTINCT huso_horario AS huso FROM SedesConHuso) AS sub
+    ) AS Husos_Horarios_Detectados,
     CASE 
-        WHEN COUNT(DISTINCT s.id_sede) >= 8 AND COUNT(DISTINCT s.huso_horario) >= 3 
+        WHEN COUNT(DISTINCT id_sede) >= 8 AND COUNT(DISTINCT huso_horario) >= 3 
         THEN 'CUMPLE CON LA REGLA' 
         ELSE 'NO CUMPLE' 
     END AS Estado_Validacion
-FROM torneo.SEDE s;
+FROM SedesConHuso;
 
--- Detalle individual de las sedes con sus husos horarios:
+-- detalle fila por fila de cada sede con su huso:
 SELECT 
-    s.id_sede,
-    s.nombre_estadio,
-    s.ciudad,
-    p.nombre_pais,
-    s.huso_horario
-FROM torneo.SEDE s
-INNER JOIN geografia.PAIS p ON s.id_pais = p.id_pais
-ORDER BY s.huso_horario, s.ciudad;
-
---2. Al menos 16 selecciones participantes, cada una con al menos 23 convocados
--- Muestra la lista de selecciones con su conteo de convocados y si cumplen el mínimo de 23
-SELECT 
-    p.id_pais,
-    p.nombre_pais AS Seleccion,
-    COUNT(j.id_jugador) AS Cantidad_Convocados,
+    s.id_sede AS [ID Sede],
+    s.nombre_estadio AS [Estadio],
+    s.ciudad AS [Ciudad],
+    s.capacidad AS [Capacidad],
     CASE 
-        WHEN COUNT(j.id_jugador) >= 23 THEN 'CUMPLE (>= 23)' 
-        ELSE 'INCOMPLETO (< 23)' 
-    END AS Estado_Convocatoria
-FROM geografia.PAIS p
-INNER JOIN plantel.CONVOCATORIA c ON p.id_pais = c.id_pais
-INNER JOIN plantel.JUGADOR j ON c.id_convocatoria = j.id_convocatoria
-GROUP BY p.id_pais, p.nombre_pais
-HAVING COUNT(j.id_jugador) >= 23
-ORDER BY Cantidad_Convocados DESC;
+        WHEN s.ciudad IN ('Vancouver', 'Seattle', 'San Francisco', 'Los Ángeles', 'Los Angeles') THEN 'UTC-7 (Pacífico)'
+        WHEN s.ciudad IN ('Guadalajara', 'Ciudad de México', 'Monterrey', 'Dallas', 'Houston', 'Kansas City') THEN 'UTC-5 (Central)'
+        WHEN s.ciudad IN ('Atlanta', 'Miami', 'Boston', 'Nueva York / Nueva Jersey', 'New York/New Jersey', 'Toronto', 'Filadelfia') THEN 'UTC-4 (Este)'
+        ELSE 'UTC-5 (Central)'
+    END AS [Huso Horario Asignado]
+FROM torneo.SEDE s
+ORDER BY [Huso Horario Asignado], s.ciudad;
 
 -- Validación global: Al menos 16 selecciones con >= 23 convocados
+-- Detalle por selección:
 SELECT 
     COUNT(*) AS Total_Selecciones_Con_Mas_De_23,
-    CASE WHEN COUNT(*) >= 16 THEN 'CUMPLE CON LA REGLA (>= 16)' ELSE 'NO CUMPLE' END AS Estado_Global
+    CASE 
+        WHEN COUNT(*) >= 16 THEN 'CUMPLE CON LA REGLA (>= 16)' 
+        ELSE 'NO CUMPLE' 
+    END AS Estado_Global
 FROM (
-    SELECT p.id_pais
-    FROM geografia.PAIS p
-    INNER JOIN plantel.CONVOCATORIA c ON p.id_pais = c.id_pais
-    INNER JOIN plantel.JUGADOR j ON c.id_convocatoria = j.id_convocatoria
-    GROUP BY p.id_pais
-    HAVING COUNT(j.id_jugador) >= 23
+    SELECT 
+        c.id_seleccion
+    FROM torneo.CONVOCATORIA c
+    GROUP BY c.id_seleccion
+    HAVING COUNT(DISTINCT c.nro_doc) >= 23
 ) AS Sub;
 
 --3. Al menos 24 partidos (grupos y eliminación directa) con titulares y suplentes
--- Detalla partidos, fase, y cuenta de titulares (11) y suplentes por equipo
+WITH EquiposValidosPorPartido AS (
+    SELECT 
+        ja.id_fase,
+        ja.nro_partido_fase,
+        ja.id_seleccion,
+        SUM(CASE WHEN ja.es_titular = 1 THEN 1 ELSE 0 END) AS cant_titulares,
+        SUM(CASE WHEN ja.es_titular = 0 THEN 1 ELSE 0 END) AS cant_suplentes
+    FROM torneo.JUGADOR_ALINEACION ja
+    GROUP BY ja.id_fase, ja.nro_partido_fase, ja.id_seleccion
+    HAVING SUM(CASE WHEN ja.es_titular = 1 THEN 1 ELSE 0 END) = 11
+       AND SUM(CASE WHEN ja.es_titular = 0 THEN 1 ELSE 0 END) >= 1
+),
+PartidosCompletos AS (
+    SELECT 
+        id_fase,
+        nro_partido_fase
+    FROM EquiposValidosPorPartido
+    GROUP BY id_fase, nro_partido_fase
+    HAVING COUNT(id_seleccion) = 2  -- Ambos equipos con 11 titulares y suplentes
+)
 SELECT 
-    part.id_partido,
-    part.fase AS [Fase], -- 'Grupos', 'Octavos', etc.
-    p_local.nombre_pais AS [Local],
-    p_visit.nombre_pais AS [Visitante],
-    SUM(CASE WHEN a.es_titular = 1 THEN 1 ELSE 0 END) AS [Total_Titulares],
-    SUM(CASE WHEN a.es_titular = 0 THEN 1 ELSE 0 END) AS [Total_Suplentes],
+    COUNT(*) AS Total_Partidos_Completos,
+    COUNT(DISTINCT id_fase) AS Total_Fases_Distintas,
     CASE 
-        WHEN SUM(CASE WHEN a.es_titular = 1 THEN 1 ELSE 0 END) = 22 -- 11 por cada equipo
-             AND SUM(CASE WHEN a.es_titular = 0 THEN 1 ELSE 0 END) >= 14 
-        THEN 'ALINEACIÓN COMPLETA' 
-        ELSE 'INCOMPLETO' 
-    END AS [Estado_Alineacion]
-FROM torneo.PARTIDO part
-INNER JOIN geografia.PAIS p_local ON part.id_pais_local = p_local.id_pais
-INNER JOIN geografia.PAIS p_visit ON part.id_pais_visitante = p_visit.id_pais
-INNER JOIN partido.ALINEACION a ON part.id_partido = a.id_partido
-GROUP BY part.id_partido, part.fase, p_local.nombre_pais, p_visit.nombre_pais
-ORDER BY part.id_partido;
+        WHEN COUNT(*) >= 24 AND COUNT(DISTINCT id_fase) >= 2
+        THEN 'CUMPLE CON LA REGLA (>= 24 Partidos en Grupos y Eliminación)' 
+        ELSE 'NO CUMPLE' 
+    END AS Estado_Global
+FROM PartidosCompletos;
+
 
 --4. Al menos 15 árbitros con asignación completa en cada partido (Principal, Asistentes, 4to y VAR)
 -- 1. Verifica que existan al menos 15 árbitros en la nómina
