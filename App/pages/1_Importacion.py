@@ -337,24 +337,26 @@ if btn_importar:
 
                 # --- 2. SEDES Y FIXTURE ---
                 elif proceso_elegido.startswith("2. Sedes"):
-                    # El Stored Procedure espera exactamente el parámetro @RutaArchivo con el XML de Sedes y Fixture
+                    ruta_conf_sql = ruta_conf.replace("'", "''")
                     ruta_sedes_sql = ruta_sedes.replace("'", "''")
+
+                    # Importar Confederaciones (XML)
+                    cursor.execute(f"EXEC geografia.sp_IMPORTAR_CONFEDERACIONES_XML @RutaArchivo = '{ruta_conf_sql}';")
+
+                    # Sincronizar Fases
+                    cursor.execute("EXEC torneo.sp_IMPORTAR_FASES;")
+
+                    # Importar Sedes y Fixture (XML)
                     cursor.execute(f"EXEC torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML @RutaArchivo = '{ruta_sedes_sql}';")
 
+                    # Guardamos la consulta directa a las Sedes cargadas
+                    st.session_state["importacion_ok"] = True
+                    st.session_state["tabla_a_mostrar"] = "torneo.FASE_TORNEO"
+                    st.session_state["query_mostrar"] = """
                     st.session_state["importacion_ok"] = True
                     st.session_state["tabla_a_mostrar"] = "torneo.SEDE"
-                    st.session_state["query_mostrar"] = """
-                        SELECT 
-                            s.id_sede,
-                            s.nombre_estadio AS [Estadio],
-                            s.ciudad AS [Ciudad],
-                            s.capacidad AS [Capacidad],
-                            p.nombre_pais AS [País]
-                        FROM torneo.SEDE s
-                        LEFT JOIN geografia.PAIS p ON s.id_pais = p.id_pais
-                        ORDER BY s.id_sede ASC;
-                    """
-
+                    st.session_state["query_mostrar"] = "SELECT TOP 100 * FROM torneo.SEDE ORDER BY 1 ASC;"
+                        """
                 # --- 3. ÁRBITROS ---
                 elif proceso_elegido.startswith("3. Árbitros"):
                     ruta_arb_csv_sql = ruta_arb_csv.replace("'", "''")
