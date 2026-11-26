@@ -123,90 +123,155 @@ FROM PartidosCompletos;
 --4. Al menos 15 árbitros con asignación completa en cada partido (Principal, Asistentes, 4to y VAR)
 -- 1. Verifica que existan al menos 15 árbitros en la nómina
 SELECT 
-    COUNT(DISTINCT a.id_arbitro) AS Total_Arbitros_Registrados,
-    CASE WHEN COUNT(DISTINCT a.id_arbitro) >= 15 THEN 'CUMPLE (>= 15)' ELSE 'NO CUMPLE' END AS Estado_Nomina
+    COUNT(DISTINCT CONCAT(a.tipo_doc, '-', a.nro_doc)) AS Total_Arbitros_Nomina,
+    CASE 
+        WHEN COUNT(DISTINCT CONCAT(a.tipo_doc, '-', a.nro_doc)) >= 15 
+        THEN 'CUMPLE CON LA REGLA (>= 15 Árbitros en Nómina)' 
+        ELSE 'NO CUMPLE' 
+    END AS Estado_Nomina
 FROM persona.ARBITRO a;
 
 -- 2. Verifica la cuarteta + VAR en cada partido
+WITH RolesPorPartido AS (
+    SELECT 
+        d.id_fase,
+        d.nro_partido_fase,
+        COUNT(DISTINCT CONCAT(d.tipo_doc, '-', d.nro_doc)) AS Total_Arbitros,
+        -- Verificación de roles clave según rol_descripcion
+        SUM(CASE WHEN r.rol_descripcion LIKE '%Principal%' OR r.rol_descripcion LIKE '%Árbitro%' THEN 1 ELSE 0 END) AS Principal,
+        SUM(CASE WHEN r.rol_descripcion LIKE '%Asistente%' OR r.rol_descripcion LIKE '%Línea%' THEN 1 ELSE 0 END)     AS Asistentes,
+        SUM(CASE WHEN r.rol_descripcion LIKE '%Cuarto%' OR r.rol_descripcion LIKE '%4to%' THEN 1 ELSE 0 END)          AS Cuarto_Arbitro,
+        SUM(CASE WHEN r.rol_descripcion LIKE '%VAR%' THEN 1 ELSE 0 END)                                                AS VAR
+    FROM torneo.DESIGNACION_ARBITRAL d
+    INNER JOIN torneo.ROL_ARBITRAL r 
+        ON d.id_rol = r.id_rol
+    GROUP BY d.id_fase, d.nro_partido_fase
+)
 SELECT 
-    p.id_partido,
-    COUNT(da.id_arbitro) AS Total_Arbitros_Asignados,
-    STRING_AGG(CONCAT(da.rol_partido, ': ', per.apellido), ' | ') AS [Cuerpo_Arbitral_Designado],
+    id_fase                                                                 AS [Fase],
+    nro_partido_fase                                                        AS [Partido #],
+    Total_Arbitros                                                          AS [Total Designados],
+    Principal                                                               AS [Principal],
+    Asistentes                                                              AS [Asistentes],
+    Cuarto_Arbitro                                                          AS [4to Árbitro],
+    VAR                                                                     AS [VAR],
     CASE 
-        WHEN COUNT(DISTINCT da.rol_partido) >= 4 THEN 'ASIGNACIÓN COMPLETA'
-        ELSE 'ASIGNACIÓN INCOMPLETA'
-    END AS Estado_Asignacion
-FROM torneo.PARTIDO p
-INNER JOIN partido.DESIGNACION_ARBITRAL da ON p.id_partido = da.id_partido
-INNER JOIN persona.ARBITRO a ON da.id_arbitro = a.id_arbitro
-INNER JOIN persona.PERSONA per ON a.id_persona = per.id_persona
-GROUP BY p.id_partido;
+        WHEN Total_Arbitros >= 5 THEN 'CUARTETA + VAR COMPLETA'
+        ELSE 'INCOMPLETA'
+    END                                                                     AS [Estado_Partido]
+FROM RolesPorPartido
+ORDER BY id_fase ASC, nro_partido_fase ASC;
+
 
 --5. Historial de campañas publicitarias con anunciantes de al menos 6 países distintos
 -- Conteo de anunciantes por país y verificación del mínimo de 6 países
+WITH PaisesDistintosAnunciantes AS (
+    SELECT DISTINCT 
+        pa.id_pais,
+        pa.nombre_pais
+    FROM comercial.CAMPANIA_PUBLICITARIA cp
+    INNER JOIN comercial.ANUNCIANTE an 
+        ON cp.id_anunciante = an.id_anunciante
+    INNER JOIN geografia.PAIS pa 
+        ON an.id_pais_origen = pa.id_pais
+)
 SELECT 
-    COUNT(DISTINCT pa.id_pais) AS Total_Paises_Anunciantes,
-    STRING_AGG(DISTINCT pa.nombre_pais, ', ') AS Paises_Involucrados,
+    COUNT(*) AS Total_Paises_Anunciantes,
+    STRING_AGG(nombre_pais, ', ') WITHIN GROUP (ORDER BY nombre_pais ASC) AS Paises_Involucrados,
     CASE 
-        WHEN COUNT(DISTINCT pa.id_pais) >= 6 THEN 'CUMPLE (>= 6 Países)' 
+        WHEN COUNT(*) >= 6 THEN 'CUMPLE CON LA REGLA (>= 6 Países)' 
         ELSE 'NO CUMPLE' 
     END AS Estado_Validacion
-FROM marketing.CAMPANIA_PUBLICITARIA cp
-INNER JOIN marketing.ANUNCIANTE an ON cp.id_anunciante = an.id_anunciante
-INNER JOIN geografia.PAIS pa ON an.id_pais = pa.id_pais;
-
--- Detalle del historial de campañas por anunciante y país:
-SELECT 
-    cp.id_campania,
-    cp.nombre_campania,
-    an.nombre_empresa AS Anunciante,
-    pa.nombre_pais AS Pais_Origen,
-    cp.fecha_inicio,
-    cp.fecha_fin
-FROM marketing.CAMPANIA_PUBLICITARIA cp
-INNER JOIN marketing.ANUNCIANTE an ON cp.id_anunciante = an.id_anunciante
-INNER JOIN geografia.PAIS pa ON an.id_pais = pa.id_pais
-ORDER BY pa.nombre_pais, cp.fecha_inicio DESC;
+FROM PaisesDistintosAnunciantes;
 
 --6. Casos Obligatorios: Un partido con expulsión por doble amarilla y otro con roja directa
+WITH ExpulsionesDetectadas AS (
+    SELECT 
+        id_fase,
+        nro_partido_fase,
+        CASE 
+            WHEN tipo_tarjeta LIKE '%DOBLE%' OR motivo LIKE '%Doble%' THEN 'DOBLE_AMARILLA'
+            WHEN tipo_tarjeta LIKE '%ROJA%' OR motivo LIKE '%Directa%' OR motivo LIKE '%Roja%' THEN 'ROJA_DIRECTA'
+            ELSE 'OTRO'
+        END AS Categoria_Expulsion
+    FROM torneo.SANCION_TARJETA
+)
 SELECT 
-    inc.id_partido,
-    part.fase AS Fase,
-    per.apellido + ', ' + per.nombre AS Jugador,
-    pais.nombre_pais AS Seleccion,
-    inc.minuto AS Minuto_Expulsion,
-    inc.tipo_tarjeta AS Tipo_Sancion, -- 'DOBLE_AMARILLA' o 'ROJA_DIRECTA'
-    inc.observacion AS Detalle
-FROM partido.INCIDENCIA_DISCIPLINARIA inc
-INNER JOIN torneo.PARTIDO part ON inc.id_partido = part.id_partido
-INNER JOIN plantel.JUGADOR j ON inc.id_jugador = j.id_jugador
-INNER JOIN persona.PERSONA per ON j.id_persona = per.id_persona
-INNER JOIN geografia.PAIS pais ON j.id_pais = pais.id_pais
-WHERE inc.tipo_tarjeta IN ('DOBLE_AMARILLA', 'ROJA_DIRECTA')
-ORDER BY inc.tipo_tarjeta, inc.id_partido;
+    COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) AS Partidos_Con_Doble_Amarilla,
+    COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END)   AS Partidos_Con_Roja_Directa,
+    CASE 
+        WHEN COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
+         AND COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
+        THEN 'CUMPLE CON LA REGLA (Ambos Casos Registrados)' 
+        ELSE 'NO CUMPLE' 
+    END AS Estado_Validacion
+FROM ExpulsionesDetectadas;
 
 --7. Casos Obligatorios: Jugador suspendido por acumulación de amarillas que queda afuera del siguiente partido
+WITH HistorialAmarillas AS (
+    SELECT 
+        st.id_seleccion,
+        st.dorsal_sancionado,
+        st.id_fase,
+        st.nro_partido_fase,
+        ROW_NUMBER() OVER (
+            PARTITION BY st.id_seleccion, st.dorsal_sancionado 
+            ORDER BY st.id_fase ASC, st.nro_partido_fase ASC
+        ) AS Nro_Amarilla
+    FROM torneo.SANCION_TARJETA st
+    WHERE st.tipo_tarjeta LIKE '%AMARILLA%' 
+      AND st.tipo_tarjeta NOT LIKE '%DOBLE%' -- Solo amarillas simples acumulativas
+),
+SegundaAmarilla AS (
+    -- Partido donde el jugador recibe la 2da amarilla y queda inhabilitado
+    SELECT 
+        ha.id_seleccion,
+        ha.dorsal_sancionado,
+        ha.id_fase          AS Fase_Segunda_Amarilla,
+        ha.nro_partido_fase AS Partido_Segunda_Amarilla
+    FROM HistorialAmarillas ha
+    WHERE ha.Nro_Amarilla = 2
+),
+SiguientePartidoSeleccion AS (
+    -- Busca cuál fue el partido inmediatamente posterior jugado por esa misma selección
+    SELECT 
+        sa.id_seleccion,
+        sa.dorsal_sancionado,
+        sa.Fase_Segunda_Amarilla,
+        sa.Partido_Segunda_Amarilla,
+        min_post.id_fase            AS Fase_Siguiente_Partido,
+        min_post.nro_partido_fase   AS Nro_Siguiente_Partido
+    FROM SegundaAmarilla sa
+    CROSS APPLY (
+        SELECT TOP 1 ja.id_fase, ja.nro_partido_fase
+        FROM torneo.JUGADOR_ALINEACION ja
+        WHERE ja.id_seleccion = sa.id_seleccion
+          AND (
+               ja.id_fase > sa.Fase_Segunda_Amarilla 
+               OR (ja.id_fase = sa.Fase_Segunda_Amarilla AND ja.nro_partido_fase > sa.Partido_Segunda_Amarilla)
+              )
+        ORDER BY ja.id_fase ASC, ja.nro_partido_fase ASC
+    ) min_post
+)
 SELECT 
-    per.apellido + ', ' + per.nombre AS [Jugador Suspendido],
-    p.nombre_pais AS [Selección],
-    s.partido_origen AS [ID Partido Suspensión],
-    s.partido_inhabilitado AS [ID Partido Siguiente (Inhabilitado)],
-    s.motivo_sancion AS [Motivo (Acumulación)],
+    s.nombre_seleccion                                      AS [Selección],
+    sps.dorsal_sancionado                                   AS [Dorsal Jugador],
+    CONCAT('Fase ', sps.Fase_Segunda_Amarilla, ' - Part. ', sps.Partido_Segunda_Amarilla) AS [Partido 2da Amarilla (Sanción)],
+    CONCAT('Fase ', sps.Fase_Siguiente_Partido, ' - Part. ', sps.Nro_Siguiente_Partido)   AS [Partido Siguiente (Cumplimiento)],
     CASE 
-        WHEN NOT EXISTS (
-            SELECT 1 
-            FROM partido.ALINEACION al 
-            WHERE al.id_partido = s.partido_inhabilitado 
-              AND al.id_jugador = s.id_jugador 
-              AND al.es_titular = 1
-        ) THEN 'CORRECTO: Quedó fuera de la formación titular'
-        ELSE 'ERROR: Aparece como titular estando suspendido'
-    END AS [Control_Reglamentario]
-FROM disciplina.SUSPENSION s
-INNER JOIN plantel.JUGADOR j ON s.id_jugador = j.id_jugador
-INNER JOIN persona.PERSONA per ON j.id_persona = per.id_persona
-INNER JOIN geografia.PAIS p ON j.id_pais = p.id_pais
-WHERE s.motivo_sancion LIKE '%AMARILLAS%';
+        WHEN ja_control.dorsal_oficial IS NULL 
+        THEN 'CUMPLE: FUERA DEL PLANTEL (SUSPENDIDO)'
+        ELSE 'VIOLACIÓN: APARECE EN PLANILLA'
+    END                                                     AS [Estado_Suspension]
+FROM SiguientePartidoSeleccion sps
+INNER JOIN torneo.SELECCION s 
+    ON sps.id_seleccion = s.id_seleccion
+-- Verifica si el jugador fue incluido en la planilla del siguiente partido
+LEFT JOIN torneo.JUGADOR_ALINEACION ja_control 
+    ON sps.Fase_Siguiente_Partido = ja_control.id_fase
+   AND sps.Nro_Siguiente_Partido = ja_control.nro_partido_fase
+   AND sps.id_seleccion = ja_control.id_seleccion
+   AND sps.dorsal_sancionado = ja_control.dorsal_oficial;
 
 --8. Casos Obligatorios: Cambio realizado por lesión dentro de los primeros 20 minutos
 SELECT 
