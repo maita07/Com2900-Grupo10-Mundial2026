@@ -48,6 +48,12 @@ BEGIN
             SED.ciudad                   AS [Estadio/@Ciudad],
             SED.nombre_estadio           AS [Estadio/@Nombre],
             P.asistencia_oficial         AS [Estadio/@Asistencia],
+            CASE 
+                WHEN P.id_ganador_penales IS NOT NULL THEN S_Penal.nombre_seleccion + ' (por penales)'
+                WHEN P.goles_local > P.goles_visitante THEN SL.nombre_seleccion
+                WHEN P.goles_visitante > P.goles_local THEN SV.nombre_seleccion
+                ELSE 'Empate'
+            END AS [Resultado/@GanadorOficial],
             -- Detalle del Equipo Local
             SL.nombre_seleccion          AS [Resultado/Local/@Equipo],
             P.goles_local                AS [Resultado/Local/@Goles],
@@ -57,12 +63,6 @@ BEGIN
             P.goles_visitante            AS [Resultado/Visitante/@Goles],
             P.penales_visitante          AS [Resultado/Visitante/@Penales],
             -- Ganador del Encuentro
-            CASE 
-                WHEN P.id_ganador_penales IS NOT NULL THEN S_Penal.nombre_seleccion + ' (por penales)'
-                WHEN P.goles_local > P.goles_visitante THEN SL.nombre_seleccion
-                WHEN P.goles_visitante > P.goles_local THEN SV.nombre_seleccion
-                ELSE 'Empate'
-            END AS [Resultado/@GanadorOficial],
             -- Sub-consulta anidada para eventos de GOL (1 a N)
             (
                 SELECT 
