@@ -243,12 +243,12 @@ st.title("📋 Tablero de Control y Criterios de Aceptación")
 st.write("Demostración interactiva de las reglas de negocio, sedes y casos obligatorios evaluados por la cátedra.")
 
 tab_sedes, tab_expulsiones, tab_suspension, tab_cambios, tab_arbitros, tab_auditoria = st.tabs([
-    "🏟️ Sedes y UTC",
-    "🟥 1. Expulsiones",
-    "⚠️ 2. Suspensión Activa",
-    "⏱️ 3. Cambio < 20 min",
-    "⚖️ 4. Regla Arbitral",
-    "📑 5. Errores Parciales"
+    "🏟️ 1. Sedes y UTC",
+    "🟥 2. Expulsiones",
+    "⚠️ 3. Suspensión Activa",
+    "⏱️ 4. Cambio < 20 min",
+    "⚖️ 5. Regla Arbitral",
+    "📑 6. Errores Parciales"
 ])
 
 # 1. SEDES Y HUSOS HORARIOS
@@ -274,6 +274,7 @@ with tab_sedes:
         st.error(f"Error al consultar sedes: {e}")
 
 # 2. EXPULSIONES 
+with tab_expulsiones:
     st.subheader("🟥 Caso: Expulsión por Doble Amarilla y por Roja Directa")
     try:
         conn = obtener_conexion()
@@ -306,7 +307,9 @@ with tab_sedes:
     except Exception as e:
         st.error(f"Error al consultar expulsiones: {e}")
 
+
 # 3. SUSPENSIONES POR TARJETAS
+with tab_suspension:
     st.subheader("⚠️ Caso: Jugadores Inhabilitados por Acumulación de Amarillas")
     try:
         conn = obtener_conexion()
@@ -354,6 +357,7 @@ with tab_sedes:
         st.error(f"Error al consultar jugadores inhabilitados: {e}")
 
 # 4. CAMBIO POR LESIÓN
+with tab_cambios:
     st.subheader("⏱️ Caso: Sustitución por Lesión en los Primeros 20 Minutos")
     try:
         conn = obtener_conexion()
@@ -392,7 +396,7 @@ with tab_sedes:
         st.error(f"Error al consultar sustituciones: {e}")
 
 # 5. REGLA ARBITRAL
-
+with tab_arbitros:
     st.subheader("⚖️ Caso: Descarte Arbitral por Conflicto de Nacionalidad")
     try:
         conn = obtener_conexion()
@@ -419,6 +423,19 @@ with tab_sedes:
         st.dataframe(df, use_container_width=True, hide_index=True)
     except Exception as e:
         st.error(f"Error al consultar designaciones arbitrales: {e}")
+
+with tab_auditoria:
+    st.subheader("📑 Caso: Auditoría de Cambios y Sanciones")
+    try:
+        conn = obtener_conexion()
+        query = """
+            SELECT * FROM auditoria.LOG_IMPORTACION a ORDER BY a.fecha_hora DESC;
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error al consultar auditoría: {e}")
 
 st.write("---")
 # Pie de Página Institucional
