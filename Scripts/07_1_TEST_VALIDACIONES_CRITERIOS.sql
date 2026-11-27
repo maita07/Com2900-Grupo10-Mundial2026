@@ -270,7 +270,7 @@ SELECT
 FROM torneo.SUSTITUCION sus
 JOIN FormacionPorPartido p_entra ON sus.dorsal_entra = p_entra.Nro_Camiseta AND sus.id_seleccion = p_entra.id_seleccion
 JOIN FormacionPorPartido p_sale ON sus.dorsal_sale = p_sale.Nro_Camiseta AND sus.id_seleccion = p_sale.id_seleccion
-WHERE sus.minuto_cambio <= 20
+WHERE sus.minuto_cambio <= 20;
 
 --9. Casos Obligatorios: Partido en Prime Time con más de 4 mercados y priorización de 4
 WITH MercadosPartidoHoraLocal AS (
