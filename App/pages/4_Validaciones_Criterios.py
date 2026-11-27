@@ -275,7 +275,36 @@ with tab_sedes:
 
 # 2. EXPULSIONES 
     st.subheader("🟥 Caso: Expulsión por Doble Amarilla y por Roja Directa")
-    
+    try:
+        conn = obtener_conexion()
+        query = """
+            WITH ExpulsionesDetectadas AS (
+                SELECT 
+                    id_fase,
+                    nro_partido_fase,
+                    CASE 
+                        WHEN tipo_tarjeta LIKE '%DOBLE%' OR motivo LIKE '%Doble%' THEN 'DOBLE_AMARILLA'
+                        WHEN tipo_tarjeta LIKE '%ROJA%' OR motivo LIKE '%Directa%' OR motivo LIKE '%Roja%' THEN 'ROJA_DIRECTA'
+                        ELSE 'OTRO'
+                    END AS Categoria_Expulsion
+                FROM torneo.SANCION_TARJETA
+            )
+            SELECT 
+                COUNT(CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) AS Partidos_Con_Doble_Amarilla,
+                COUNT(CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END)   AS Partidos_Con_Roja_Directa,
+                CASE 
+                    WHEN COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
+                    AND COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
+                    THEN 'CUMPLE CON LA REGLA (Ambos Casos Registrados)' 
+                    ELSE 'NO CUMPLE' 
+                END AS Estado_Validacion
+            FROM ExpulsionesDetectadas;
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error al consultar sedes: {e}")
 
 # 3. SUSPENSIONES POR TARJETAS
     st.subheader("⚠️ Caso: Jugadores Inhabilitados por Acumulación de Amarillas")

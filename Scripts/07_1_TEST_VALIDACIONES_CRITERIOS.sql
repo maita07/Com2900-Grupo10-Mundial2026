@@ -197,8 +197,8 @@ WITH ExpulsionesDetectadas AS (
     FROM torneo.SANCION_TARJETA
 )
 SELECT 
-    COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) AS Partidos_Con_Doble_Amarilla,
-    COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END)   AS Partidos_Con_Roja_Directa,
+    COUNT(CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) AS Partidos_Con_Doble_Amarilla,
+    COUNT(CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END)   AS Partidos_Con_Roja_Directa,
     CASE 
         WHEN COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'DOBLE_AMARILLA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
          AND COUNT(DISTINCT CASE WHEN Categoria_Expulsion = 'ROJA_DIRECTA' THEN CONCAT(id_fase, '-', nro_partido_fase) END) >= 1
@@ -274,38 +274,73 @@ LEFT JOIN torneo.JUGADOR_ALINEACION ja_control
    AND sps.dorsal_sancionado = ja_control.dorsal_oficial;
 
 --8. Casos Obligatorios: Cambio realizado por lesión dentro de los primeros 20 minutos
+;WITH FormacionPorPartido AS(
+    SELECT s.id_seleccion,
+    s.nombre_seleccion,
+           con.dorsal_oficial AS Nro_Camiseta,
+           per.nombre AS Nombre,
+           per.apellido AS Apellido
+    FROM torneo.SELECCION s
+    JOIN torneo.CONVOCATORIA con ON con.id_seleccion = s.id_seleccion
+    JOIN persona.PERSONA per ON per.nro_doc = con.nro_doc AND per.tipo_doc = con.tipo_doc
+           
+)
 SELECT 
-    c.id_partido,
-    c.minuto AS [Minuto Cambio],
+    sus.nro_partido_fase AS Nro_Partido,
+    p_entra.nombre_seleccion AS Seleccion,
+    sus.minuto_cambio AS [Minuto Cambio],
     p_sale.apellido + ' ' + p_sale.nombre AS [Sale Lesionado],
     p_entra.apellido + ' ' + p_entra.nombre AS [Entra al Campo],
-    c.motivo_cambio AS [Motivo Informado],
     CASE 
-        WHEN c.minuto <= 20 AND c.motivo_cambio LIKE '%Lesi%' 
-        THEN 'CUMPLE CASO: Lesión prematura (<= 20 min)'
+        WHEN sus.minuto_cambio <= 20
+        THEN 'CUMPLE CASO (<= 20 min)'
         ELSE 'Otro Cambio'
     END AS [Estado]
-FROM partido.CAMBIO c
-INNER JOIN plantel.JUGADOR j_sale ON c.id_jugador_sale = j_sale.id_jugador
-INNER JOIN persona.PERSONA p_sale ON j_sale.id_persona = p_sale.id_persona
-INNER JOIN plantel.JUGADOR j_entra ON c.id_jugador_entra = j_entra.id_jugador
-INNER JOIN persona.PERSONA p_entra ON j_entra.id_persona = p_entra.id_persona
-WHERE c.minuto <= 20 AND c.motivo_cambio LIKE '%Lesi%';
+FROM torneo.SUSTITUCION sus
+JOIN FormacionPorPartido p_entra ON sus.dorsal_entra = p_entra.Nro_Camiseta AND sus.id_seleccion = p_entra.id_seleccion
+JOIN FormacionPorPartido p_sale ON sus.dorsal_sale = p_sale.Nro_Camiseta AND sus.id_seleccion = p_sale.id_seleccion
+WHERE sus.minuto_cambio <= 20
 
 --9. Casos Obligatorios: Partido en Prime Time con más de 4 mercados y priorización de 4
-SELECT 
-    pt.id_partido,
-    part.fecha_hora_partido AS [Horario Kickoff],
-    pt.mercados_candidatos_total AS [Total Mercados en Prime Time],
-    pt.mercados_seleccionados AS [Top 4 Mercados Asignados],
-    pt.criterio_priorizacion AS [Criterio de Selección Aplicado],
-    CASE 
-        WHEN pt.mercados_candidatos_total > 4 AND LEN(pt.mercados_seleccionados) > 0 
-        THEN 'CUMPLE: Se priorizaron 4 mercados comerciales'
-        ELSE 'Revisar cálculo'
-    END AS [Estado_Validacion]
-FROM transmision.PRIME_TIME_LOG pt
-INNER JOIN torneo.PARTIDO part ON pt.id_partido = part.id_partido;
+WITH MercadosPartidoHoraLocal AS (
+    SELECT DISTINCT
+        ep.id_fase,
+        ep.nro_partido_fase,
+        pm.id_pais,
+        DATEADD(MINUTE,
+        CAST(geografia.fn_ObtenerDesplazamientoUTC(pm.id_pais) * 60 AS INT),
+            p.fecha_hora_utc
+        ) AS fecha_hora_mercado
+    FROM comercial.EXHIBICION_PUBLICITARIA ep
+    INNER JOIN comercial.PIEZA_MERCADO pm ON ep.id_pieza = pm.id_pieza
+    INNER JOIN torneo.PARTIDO p ON ep.id_fase = p.id_fase AND ep.nro_partido_fase = p.nro_partido_fase
+)
+SELECT
+    p.id_fase,
+    ft.nombre_fase,
+    p.nro_partido_fase,
+    sl.nombre_seleccion AS Local,
+    sv.nombre_seleccion AS Visitante,
+    p.fecha_hora_utc,
+    COUNT(DISTINCT mph.id_pais) AS Cant_Mercados_Prime_Time 
+FROM torneo.PARTIDO p
+JOIN torneo.FASE_TORNEO ft ON p.id_fase = ft.id_fase
+JOIN torneo.SELECCION sl ON p.id_seleccion_local = sl.id_seleccion
+JOIN torneo.SELECCION sv ON p.id_seleccion_visitante = sv.id_seleccion
+JOIN MercadosPartidoHoraLocal mph ON p.id_fase = mph.id_fase AND p.nro_partido_fase = mph.nro_partido_fase
+WHERE DATEPART(HOUR, mph.fecha_hora_mercado) BETWEEN 19 AND 22
+GROUP BY
+    p.id_fase,
+    ft.nombre_fase,
+    p.nro_partido_fase,
+    sl.nombre_seleccion,
+    sv.nombre_seleccion,
+    p.fecha_hora_utc
+HAVING COUNT(DISTINCT mph.id_pais) >= 4
+ORDER BY
+    Cant_Mercados_Prime_Time DESC,
+    p.fecha_hora_utc ASC;
+
 
 --10. Casos Obligatorios: Designación arbitral descartada por conflicto de nacionalidad
 SELECT 
