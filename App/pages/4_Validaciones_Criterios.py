@@ -304,19 +304,121 @@ with tab_sedes:
         conn.close()
         st.dataframe(df, use_container_width=True, hide_index=True)
     except Exception as e:
-        st.error(f"Error al consultar sedes: {e}")
+        st.error(f"Error al consultar expulsiones: {e}")
 
 # 3. SUSPENSIONES POR TARJETAS
     st.subheader("⚠️ Caso: Jugadores Inhabilitados por Acumulación de Amarillas")
-   
+    try:
+        conn = obtener_conexion()
+        query = """
+            WITH Amarillas AS (
+                SELECT st.id_seleccion, st.dorsal_sancionado, st.id_fase, st.nro_partido_fase, p.fecha_hora_utc,
+                    DENSE_RANK() OVER (
+                        PARTITION BY st.id_seleccion, st.dorsal_sancionado,
+                                        CASE WHEN st.id_fase = 1 THEN 1 WHEN st.id_fase <= 4 THEN 2 ELSE 3 END
+                        ORDER BY p.fecha_hora_utc) AS Nro_Amarilla
+                FROM torneo.SANCION_TARJETA st
+                INNER JOIN torneo.PARTIDO p ON p.id_fase = st.id_fase AND p.nro_partido_fase = st.nro_partido_fase
+                WHERE st.tipo_tarjeta = 'AMARILLA'
+                AND NOT EXISTS (SELECT 1 FROM torneo.SANCION_TARJETA d
+                                WHERE d.id_fase = st.id_fase AND d.nro_partido_fase = st.nro_partido_fase
+                                    AND d.id_seleccion = st.id_seleccion AND d.dorsal_sancionado = st.dorsal_sancionado
+                                    AND d.tipo_tarjeta = 'DOBLE_AMARILLA')
+            )
+            SELECT
+                s.nombre_seleccion                                              AS [Selección],
+                a.dorsal_sancionado                                             AS [Dorsal],
+                CONCAT('Fase ', a.id_fase, ' - Part. ', a.nro_partido_fase)     AS [Partido Sanción],
+                IIF(sig.id_fase IS NULL, '-',
+                    CONCAT('Fase ', sig.id_fase, ' - Part. ', sig.nro_partido_fase)) AS [Partido Cumplimiento],
+                CASE WHEN sig.id_fase IS NULL       THEN 'SIN PARTIDO POSTERIOR (SELECCIÓN ELIMINADA)'
+                    WHEN ja.dorsal_oficial IS NULL THEN 'CUMPLE: FUERA DE LA PLANILLA (SUSPENDIDO)'
+                    ELSE 'VIOLACIÓN: APARECE EN PLANILLA'
+                END                                                             AS [Estado_Suspension]
+            FROM Amarillas a
+            INNER JOIN torneo.SELECCION s ON s.id_seleccion = a.id_seleccion
+            OUTER APPLY (SELECT TOP 1 p.id_fase, p.nro_partido_fase
+                        FROM torneo.PARTIDO p
+                        WHERE a.id_seleccion IN (p.id_seleccion_local, p.id_seleccion_visitante)
+                        AND p.fecha_hora_utc > a.fecha_hora_utc
+                        ORDER BY p.fecha_hora_utc) sig
+            LEFT JOIN torneo.JUGADOR_ALINEACION ja
+                ON ja.id_fase = sig.id_fase AND ja.nro_partido_fase = sig.nro_partido_fase
+            AND ja.id_seleccion = a.id_seleccion AND ja.dorsal_oficial = a.dorsal_sancionado
+            WHERE a.Nro_Amarilla = 2;
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error al consultar jugadores inhabilitados: {e}")
 
 # 4. CAMBIO POR LESIÓN
     st.subheader("⏱️ Caso: Sustitución por Lesión en los Primeros 20 Minutos")
-    
+    try:
+        conn = obtener_conexion()
+        query = """
+            ;WITH FormacionPorPartido AS(
+                SELECT s.id_seleccion,
+                s.nombre_seleccion,
+                    con.dorsal_oficial AS Nro_Camiseta,
+                    per.nombre AS Nombre,
+                    per.apellido AS Apellido
+                FROM torneo.SELECCION s
+                JOIN torneo.CONVOCATORIA con ON con.id_seleccion = s.id_seleccion
+                JOIN persona.PERSONA per ON per.nro_doc = con.nro_doc AND per.tipo_doc = con.tipo_doc
+                    
+            )
+            SELECT 
+                sus.nro_partido_fase AS Nro_Partido,
+                p_entra.nombre_seleccion AS Seleccion,
+                sus.minuto_cambio AS [Minuto Cambio],
+                p_sale.apellido + ' ' + p_sale.nombre AS [Sale Lesionado],
+                p_entra.apellido + ' ' + p_entra.nombre AS [Entra al Campo],
+                CASE 
+                    WHEN sus.minuto_cambio <= 20
+                    THEN 'CUMPLE CASO (<= 20 min)'
+                    ELSE 'Otro Cambio'
+                END AS [Estado]
+            FROM torneo.SUSTITUCION sus
+            JOIN FormacionPorPartido p_entra ON sus.dorsal_entra = p_entra.Nro_Camiseta AND sus.id_seleccion = p_entra.id_seleccion
+            JOIN FormacionPorPartido p_sale ON sus.dorsal_sale = p_sale.Nro_Camiseta AND sus.id_seleccion = p_sale.id_seleccion
+            WHERE sus.minuto_cambio <= 20
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error al consultar sustituciones: {e}")
+
 # 5. REGLA ARBITRAL
 
     st.subheader("⚖️ Caso: Descarte Arbitral por Conflicto de Nacionalidad")
-    st.caption("Verificación de que un árbitro no pueda ser designado si comparte nacionalidad con alguno de los países en cancha.")
+    try:
+        conn = obtener_conexion()
+        query = """
+            DECLARE @fase INT, @nro INT, @doc VARCHAR(20), @tipo VARCHAR(10), @rol INT;
+
+            SELECT TOP 1 @fase = p.id_fase, @nro = p.nro_partido_fase, @doc = a.nro_doc, @tipo = a.tipo_doc, @rol = a.id_rol
+            FROM torneo.PARTIDO p
+            INNER JOIN torneo.SELECCION s ON s.id_seleccion IN (p.id_seleccion_local, p.id_seleccion_visitante)
+            INNER JOIN persona.PERSONA pe ON pe.id_nacionalidad_pais = s.id_pais
+            INNER JOIN persona.ARBITRO a ON a.nro_doc = pe.nro_doc AND a.tipo_doc = pe.tipo_doc;
+
+            BEGIN TRY
+                EXEC torneo.sp_DESIGNACION_ARBITRAL_ABM @Accion = 'A', @id_fase = @fase, @nro_partido_fase = @nro,
+                    @nro_doc = @doc, @tipo_doc = @tipo, @id_rol = @rol;
+                SELECT 'NO CUMPLE: la designación fue aceptada' AS Estado_Validacion;
+            END TRY
+            BEGIN CATCH
+                SELECT @fase AS Fase, @nro AS Partido, @doc AS Doc_Arbitro, ERROR_MESSAGE() AS Motivo_Rechazo;
+            END CATCH;
+        """
+        df = pd.read_sql(query, conn)
+        conn.close()
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error al consultar designaciones arbitrales: {e}")
 
 st.write("---")
 # Pie de Página Institucional

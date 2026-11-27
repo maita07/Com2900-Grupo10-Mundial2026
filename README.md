@@ -133,16 +133,16 @@ EXEC geografia.sp_IMPORTAR_PAISES_E_INDICADORES
     @RutaCSV_Paises = 'C:\RUTA_REPO\Data\paises.csv';
 EXEC geografia.sp_IMPORT_HISTORIAL_TIPO_CAMBIO_API;
 
--- 2. Confederaciones (XML), Fases, Sedes y Fixture (XML)
+-- 2. Confederaciones (XML), Fases, Sedes y Fixture (XML), y Selecciones (CSV)
 EXEC geografia.sp_IMPORTAR_CONFEDERACIONES_XML
     @RutaArchivo = 'C:\RUTA_REPO\Data\confederaciones.xml';
 EXEC torneo.sp_IMPORTAR_FASES;
+EXEC torneo.sp_IMPORTAR_SELECCIONES_CSV
+    @RutaArchivo = 'C:\RUTA_REPO\Data\teams.csv';
 EXEC torneo.sp_IMPORTAR_SEDES_Y_FIXTURE_XML
     @RutaArchivo = 'C:\RUTA_REPO\Data\sedes_fixture.xml';
 
--- 3. Selecciones y Jugadores / Convocatorias (CSV)
-EXEC torneo.sp_IMPORTAR_SELECCIONES_CSV
-    @RutaArchivo = 'C:\RUTA_REPO\Data\teams.csv';
+-- 3. Jugadores / Convocatorias (CSV)
 EXEC persona.sp_IMPORTAR_JUGADORES_CSV
     @RutaCSV = 'C:\RUTA_REPO\Data\SquadLists.csv';
 
@@ -235,7 +235,7 @@ SELECT TOP 10 * FROM persona.fn_DATOS_PERSONALES(N'cifrado datos');
 
 Ejecutar `Scripts/07_1_TEST_VALIDACIONES_CRITERIOS.sql`:
 
-- **Puntos 1 a 10:** deben devolver `CUMPLE CON LA REGLA` (sedes/husos, >= 16 selecciones con >= 23 jugadores, >= 24 partidos con titulares/suplentes, >= 15 árbitros + cuarteta y VAR, >= 6 países anunciantes, expulsiones doble amarilla/roja directa, suspendido fuera del siguiente partido).
+- **Puntos 1 a 10:** deben devolver `CUMPLE CON LA REGLA` (sedes/husos, >= 16 selecciones con >= 23 jugadores, >= 24 partidos con titulares/suplentes, >= 15 árbitros + cuarteta y VAR, >= 6 países anunciantes, expulsiones doble amarilla/roja directa, suspendido fuera del siguiente partido, cambios <= 20 min, partidos en primetime en más de 4 mercados, designación arbitral descartada).
 
 ---
 

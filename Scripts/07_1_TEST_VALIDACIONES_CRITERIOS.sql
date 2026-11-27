@@ -208,70 +208,41 @@ SELECT
 FROM ExpulsionesDetectadas;
 
 --7. Casos Obligatorios: Jugador suspendido por acumulación de amarillas que queda afuera del siguiente partido
-WITH HistorialAmarillas AS (
-    SELECT 
-        st.id_seleccion,
-        st.dorsal_sancionado,
-        st.id_fase,
-        st.nro_partido_fase,
-        ROW_NUMBER() OVER (
-            PARTITION BY st.id_seleccion, st.dorsal_sancionado 
-            ORDER BY st.id_fase ASC, st.nro_partido_fase ASC
-        ) AS Nro_Amarilla
+WITH Amarillas AS (
+    SELECT st.id_seleccion, st.dorsal_sancionado, st.id_fase, st.nro_partido_fase, p.fecha_hora_utc,
+           DENSE_RANK() OVER (
+               PARTITION BY st.id_seleccion, st.dorsal_sancionado,
+                            CASE WHEN st.id_fase = 1 THEN 1 WHEN st.id_fase <= 4 THEN 2 ELSE 3 END
+               ORDER BY p.fecha_hora_utc) AS Nro_Amarilla
     FROM torneo.SANCION_TARJETA st
-    WHERE st.tipo_tarjeta LIKE '%AMARILLA%' 
-      AND st.tipo_tarjeta NOT LIKE '%DOBLE%' -- Solo amarillas simples acumulativas
-),
-SegundaAmarilla AS (
-    -- Partido donde el jugador recibe la 2da amarilla y queda inhabilitado
-    SELECT 
-        ha.id_seleccion,
-        ha.dorsal_sancionado,
-        ha.id_fase          AS Fase_Segunda_Amarilla,
-        ha.nro_partido_fase AS Partido_Segunda_Amarilla
-    FROM HistorialAmarillas ha
-    WHERE ha.Nro_Amarilla = 2
-),
-SiguientePartidoSeleccion AS (
-    -- Busca cuál fue el partido inmediatamente posterior jugado por esa misma selección
-    SELECT 
-        sa.id_seleccion,
-        sa.dorsal_sancionado,
-        sa.Fase_Segunda_Amarilla,
-        sa.Partido_Segunda_Amarilla,
-        min_post.id_fase            AS Fase_Siguiente_Partido,
-        min_post.nro_partido_fase   AS Nro_Siguiente_Partido
-    FROM SegundaAmarilla sa
-    CROSS APPLY (
-        SELECT TOP 1 ja.id_fase, ja.nro_partido_fase
-        FROM torneo.JUGADOR_ALINEACION ja
-        WHERE ja.id_seleccion = sa.id_seleccion
-          AND (
-               ja.id_fase > sa.Fase_Segunda_Amarilla 
-               OR (ja.id_fase = sa.Fase_Segunda_Amarilla AND ja.nro_partido_fase > sa.Partido_Segunda_Amarilla)
-              )
-        ORDER BY ja.id_fase ASC, ja.nro_partido_fase ASC
-    ) min_post
+    INNER JOIN torneo.PARTIDO p ON p.id_fase = st.id_fase AND p.nro_partido_fase = st.nro_partido_fase
+    WHERE st.tipo_tarjeta = 'AMARILLA'
+      AND NOT EXISTS (SELECT 1 FROM torneo.SANCION_TARJETA d
+                      WHERE d.id_fase = st.id_fase AND d.nro_partido_fase = st.nro_partido_fase
+                        AND d.id_seleccion = st.id_seleccion AND d.dorsal_sancionado = st.dorsal_sancionado
+                        AND d.tipo_tarjeta = 'DOBLE_AMARILLA')
 )
-SELECT 
-    s.nombre_seleccion                                      AS [Selección],
-    sps.dorsal_sancionado                                   AS [Dorsal Jugador],
-    CONCAT('Fase ', sps.Fase_Segunda_Amarilla, ' - Part. ', sps.Partido_Segunda_Amarilla) AS [Partido 2da Amarilla (Sanción)],
-    CONCAT('Fase ', sps.Fase_Siguiente_Partido, ' - Part. ', sps.Nro_Siguiente_Partido)   AS [Partido Siguiente (Cumplimiento)],
-    CASE 
-        WHEN ja_control.dorsal_oficial IS NULL 
-        THEN 'CUMPLE: FUERA DEL PLANTEL (SUSPENDIDO)'
-        ELSE 'VIOLACIÓN: APARECE EN PLANILLA'
-    END                                                     AS [Estado_Suspension]
-FROM SiguientePartidoSeleccion sps
-INNER JOIN torneo.SELECCION s 
-    ON sps.id_seleccion = s.id_seleccion
--- Verifica si el jugador fue incluido en la planilla del siguiente partido
-LEFT JOIN torneo.JUGADOR_ALINEACION ja_control 
-    ON sps.Fase_Siguiente_Partido = ja_control.id_fase
-   AND sps.Nro_Siguiente_Partido = ja_control.nro_partido_fase
-   AND sps.id_seleccion = ja_control.id_seleccion
-   AND sps.dorsal_sancionado = ja_control.dorsal_oficial;
+SELECT
+    s.nombre_seleccion                                              AS [Selección],
+    a.dorsal_sancionado                                             AS [Dorsal],
+    CONCAT('Fase ', a.id_fase, ' - Part. ', a.nro_partido_fase)     AS [Partido Sanción],
+    IIF(sig.id_fase IS NULL, '-',
+        CONCAT('Fase ', sig.id_fase, ' - Part. ', sig.nro_partido_fase)) AS [Partido Cumplimiento],
+    CASE WHEN sig.id_fase IS NULL       THEN 'SIN PARTIDO POSTERIOR (SELECCIÓN ELIMINADA)'
+         WHEN ja.dorsal_oficial IS NULL THEN 'CUMPLE: FUERA DE LA PLANILLA (SUSPENDIDO)'
+         ELSE 'VIOLACIÓN: APARECE EN PLANILLA'
+    END                                                             AS [Estado_Suspension]
+FROM Amarillas a
+INNER JOIN torneo.SELECCION s ON s.id_seleccion = a.id_seleccion
+OUTER APPLY (SELECT TOP 1 p.id_fase, p.nro_partido_fase
+             FROM torneo.PARTIDO p
+             WHERE a.id_seleccion IN (p.id_seleccion_local, p.id_seleccion_visitante)
+               AND p.fecha_hora_utc > a.fecha_hora_utc
+             ORDER BY p.fecha_hora_utc) sig
+LEFT JOIN torneo.JUGADOR_ALINEACION ja
+    ON ja.id_fase = sig.id_fase AND ja.nro_partido_fase = sig.nro_partido_fase
+   AND ja.id_seleccion = a.id_seleccion AND ja.dorsal_oficial = a.dorsal_sancionado
+WHERE a.Nro_Amarilla = 2;
 
 --8. Casos Obligatorios: Cambio realizado por lesión dentro de los primeros 20 minutos
 ;WITH FormacionPorPartido AS(
@@ -343,20 +314,19 @@ ORDER BY
 
 
 --10. Casos Obligatorios: Designación arbitral descartada por conflicto de nacionalidad
-SELECT 
-    c.id_log AS [ID Registro],
-    c.fecha_hora AS [Fecha Intento],
-    c.id_partido AS [Partido],
-    c.id_arbitro AS [Árbitro Descartado],
-    per.apellido + ', ' + per.nombre AS [Nombre Árbitro],
-    pa_arb.nombre_pais AS [Nacionalidad Árbitro],
-    p_loc.nombre_pais AS [País Local],
-    p_vis.nombre_pais AS [País Visitante],
-    c.motivo_rechazo AS [Motivo del Bloqueo]
-FROM auditoria.LOG_CONFLICTO_ARBITRAL c
-INNER JOIN persona.ARBITRO a ON c.id_arbitro = a.id_arbitro
-INNER JOIN persona.PERSONA per ON a.id_persona = per.id_persona
-INNER JOIN geografia.PAIS pa_arb ON a.id_pais = pa_arb.id_pais
-INNER JOIN torneo.PARTIDO part ON c.id_partido = part.id_partido
-INNER JOIN geografia.PAIS p_loc ON part.id_pais_local = p_loc.id_pais
-INNER JOIN geografia.PAIS p_vis ON part.id_pais_visitante = p_vis.id_pais;
+DECLARE @fase INT, @nro INT, @doc VARCHAR(20), @tipo VARCHAR(10), @rol INT;
+
+SELECT TOP 1 @fase = p.id_fase, @nro = p.nro_partido_fase, @doc = a.nro_doc, @tipo = a.tipo_doc, @rol = a.id_rol
+FROM torneo.PARTIDO p
+INNER JOIN torneo.SELECCION s ON s.id_seleccion IN (p.id_seleccion_local, p.id_seleccion_visitante)
+INNER JOIN persona.PERSONA pe ON pe.id_nacionalidad_pais = s.id_pais
+INNER JOIN persona.ARBITRO a ON a.nro_doc = pe.nro_doc AND a.tipo_doc = pe.tipo_doc;
+
+BEGIN TRY
+    EXEC torneo.sp_DESIGNACION_ARBITRAL_ABM @Accion = 'A', @id_fase = @fase, @nro_partido_fase = @nro,
+         @nro_doc = @doc, @tipo_doc = @tipo, @id_rol = @rol;
+    SELECT 'NO CUMPLE: la designación fue aceptada' AS Estado_Validacion;
+END TRY
+BEGIN CATCH
+    SELECT @fase AS Fase, @nro AS Partido, @doc AS Doc_Arbitro, ERROR_MESSAGE() AS Motivo_Rechazo;
+END CATCH;
